@@ -1,0 +1,20 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="100" cy="100" r="95" fill="#0ea5a4" opacity="0.1" stroke="#0ea5a4" stroke-width="2"/>
+  
+  <!-- Medical Cross -->
+  <g transform="translate(100, 100)">
+    <!-- Vertical bar -->
+    <rect x="-12" y="-40" width="24" height="80" fill="#0ea5a4" rx="4"/>
+    <!-- Horizontal bar -->
+    <rect x="-40" y="-12" width="80" height="24" fill="#0ea5a4" rx="4"/>
+    
+    <!-- Outer circle -->
+    <circle cx="0" cy="0" r="55" fill="none" stroke="#0369a1" stroke-width="3"/>
+  </g>
+  
+  <!-- Heart accent -->
+  <g transform="translate(155, 145)">
+    <path d="M 0 5 C -3 2 -6 0 -8 0 C -11 0 -13 2 -13 5 C -13 8 -8 13 0 20 C 8 13 13 8 13 5 C 13 2 11 0 8 0 C 6 0 3 2 0 5 Z" fill="#10b981"/>
+  </g>
+</svg>

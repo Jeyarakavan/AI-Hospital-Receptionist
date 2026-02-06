@@ -1,0 +1,39 @@
+// Prisma schema for AI Hospital demo
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite" // switch to postgres for prod by setting DATABASE_URL
+  url      = env("DATABASE_URL")
+}
+
+model Doctor {
+  id            String   @id @default(cuid())
+  name          String
+  specialization String
+  createdAt     DateTime @default(now())
+  appointments  Appointment[]
+}
+
+model Appointment {
+  id          String   @id @default(cuid())
+  reference   String
+  patientName String
+  mobile      String
+  problem     String
+  time        DateTime
+  doctorId    String?
+  doctor      Doctor?  @relation(fields: [doctorId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Call {
+  id          String   @id @default(cuid())
+  caller      String
+  problem     String
+  recordingUrl String?
+  transcription String?
+  transferred Boolean  @default(false)
+  receivedAt  DateTime @default(now())
+}

@@ -1,0 +1,38 @@
+<svg viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <!-- Gradient background -->
+  <defs>
+    <linearGradient id="bannerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5a4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0369a1;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="waveGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1920" height="1080" fill="url(#bannerGradient)"/>
+  
+  <!-- Decorative circles -->
+  <circle cx="200" cy="150" r="120" fill="url(#waveGradient)" opacity="0.3"/>
+  <circle cx="1700" cy="900" r="150" fill="url(#waveGradient)" opacity="0.2"/>
+  
+  <!-- Medical Cross Icon -->
+  <g transform="translate(960, 400)">
+    <circle cx="0" cy="0" r="80" fill="none" stroke="#ffffff" stroke-width="3" opacity="0.3"/>
+    <rect x="-25" y="-60" width="50" height="120" fill="#ffffff" rx="8" opacity="0.8"/>
+    <rect x="-60" y="-25" width="120" height="50" fill="#ffffff" rx="8" opacity="0.8"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="960" y="650" font-size="72" font-weight="bold" text-anchor="middle" fill="#ffffff" opacity="0.9">
+    Welcome to Our Hospital
+  </text>
+  <text x="960" y="750" font-size="32" text-anchor="middle" fill="#ffffff" opacity="0.7">
+    Professional Healthcare Services
+  </text>
+  
+  <!-- Bottom wave -->
+  <path d="M 0 900 Q 480 850 960 900 T 1920 900 L 1920 1080 L 0 1080 Z" fill="#ffffff" opacity="0.05"/>
+</svg>

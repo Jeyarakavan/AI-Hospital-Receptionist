@@ -1,0 +1,204 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Variables - Medical Theme */
+:root {
+  --bg: #f8fafc;
+  --medical-primary: #0ea5a4;
+  --medical-secondary: #0369a1;
+  --health-green: #10b981;
+  --warning-red: #dc2626;
+  --slate-200: #e2e8f0;
+  --slate-700: #334155;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--slate-700);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--medical-primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--medical-secondary);
+}
+
+/* Custom Button Utilities */
+@layer components {
+  /* Primary Medical Button */
+  .btn-primary {
+    @apply px-4 py-2 bg-gradient-to-r from-medical-primary to-medical-primary text-white font-semibold rounded-lg transition-all duration-300 hover:shadow-lg hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Secondary Medical Button */
+  .btn-secondary {
+    @apply px-4 py-2 bg-gradient-to-r from-medical-secondary to-medical-secondary text-white font-semibold rounded-lg transition-all duration-300 hover:shadow-lg hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Outline Button */
+  .btn-outline {
+    @apply px-4 py-2 border-2 border-medical-primary text-medical-primary dark:border-medical-secondary dark:text-medical-secondary font-semibold rounded-lg transition-all duration-300 hover:bg-medical-primary hover:text-white dark:hover:bg-medical-secondary hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Success/Health Button */
+  .btn-success {
+    @apply px-4 py-2 bg-gradient-to-r from-health-green to-green-500 text-white font-semibold rounded-lg transition-all duration-300 hover:shadow-lg hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Danger/Alert Button */
+  .btn-danger {
+    @apply px-4 py-2 bg-gradient-to-r from-warning-red to-red-600 text-white font-semibold rounded-lg transition-all duration-300 hover:shadow-lg hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Small Button */
+  .btn-sm {
+    @apply px-2 py-1 text-sm;
+  }
+
+  /* Large Button */
+  .btn-lg {
+    @apply px-6 py-3 text-lg;
+  }
+
+  /* Icon-only Button */
+  .btn-icon {
+    @apply p-2 rounded-lg transition-all duration-300 hover:scale-110 active:scale-95;
+  }
+
+  /* Custom Form Input Styling */
+  .input-medical {
+    @apply w-full px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-medical-primary focus:ring-2 focus:ring-medical-primary focus:ring-opacity-20 focus:outline-none transition-all duration-300;
+  }
+
+  .textarea-medical {
+    @apply w-full px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-medical-primary focus:ring-2 focus:ring-medical-primary focus:ring-opacity-20 focus:outline-none transition-all duration-300 resize-none;
+  }
+
+  .select-medical {
+    @apply w-full px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-medical-primary focus:ring-2 focus:ring-medical-primary focus:ring-opacity-20 focus:outline-none transition-all duration-300;
+  }
+
+  /* Card Styling */
+  .card-medical {
+    @apply bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6;
+  }
+
+  .card-hover {
+    @apply hover:shadow-xl hover:scale-105 transition-all duration-300;
+  }
+
+  /* Badge Styling */
+  .badge-primary {
+    @apply inline-block px-3 py-1 bg-medical-primary text-white text-sm font-semibold rounded-full;
+  }
+
+  .badge-success {
+    @apply inline-block px-3 py-1 bg-health-green text-white text-sm font-semibold rounded-full;
+  }
+
+  .badge-danger {
+    @apply inline-block px-3 py-1 bg-warning-red text-white text-sm font-semibold rounded-full;
+  }
+
+  /* Status Indicator */
+  .status-online {
+    @apply flex items-center gap-2 text-health-green font-semibold;
+  }
+
+  .status-online::before {
+    content: '';
+    @apply block w-3 h-3 rounded-full bg-health-green animate-pulse;
+  }
+
+  .status-offline {
+    @apply flex items-center gap-2 text-slate-500 font-semibold;
+  }
+
+  .status-offline::before {
+    content: '';
+    @apply block w-3 h-3 rounded-full bg-slate-400;
+  }
+
+  /* Gradient Medical Background */
+  .gradient-medical {
+    @apply bg-gradient-to-r from-medical-primary via-medical-secondary to-blue-600;
+  }
+
+  .gradient-medical-light {
+    @apply bg-gradient-to-br from-cyan-50 via-teal-50 to-blue-50;
+  }
+
+  /* Medical Text */
+  .text-medical {
+    @apply text-medical-primary font-semibold;
+  }
+
+  /* Divider */
+  .divider-medical {
+    @apply h-1 bg-gradient-to-r from-medical-primary to-medical-secondary rounded-full;
+  }
+
+  /* Medical Container */
+  .container-medical {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+}
+
+/* Small helpers */
+.animate-spin-slow {
+  animation: spin 1.6s linear infinite;
+}
+
+.animate-bounce-slow {
+  animation: bounce 2s infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Utility Classes */
+.shadow-medical {
+  box-shadow: 0 4px 6px -1px rgba(14, 165, 164, 0.1), 0 2px 4px -1px rgba(14, 165, 164, 0.06);
+}
+
+.shadow-medical-lg {
+  box-shadow: 0 20px 25px -5px rgba(14, 165, 164, 0.1), 0 10px 10px -5px rgba(14, 165, 164, 0.04);
+}
+
+.blur-medical {
+  backdrop-filter: blur(10px);
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+/* Responsive Utilities */
+@media (max-width: 640px) {
+  .hidden-mobile {
+    display: none;
+  }
+}
+
+@media (min-width: 641px) {
+  .visible-mobile {
+    display: none;
+  }
+}
