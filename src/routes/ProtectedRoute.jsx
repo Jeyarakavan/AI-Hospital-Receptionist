@@ -1,19 +1,37 @@
-import React from 'react'
-import { Navigate } from 'react-router-dom'
-import useAuth from '../hooks/useAuth'
+/**
+ * Protected Route Component
+ */
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { Box, CircularProgress } from '@mui/material';
 
-export default function ProtectedRoute({children, roles}){
-  const {user, staffUser} = useAuth()
-  
-  // Check if user is logged in (either demo or staff)
-  const isAuthenticated = user || staffUser
-  if(!isAuthenticated) return <Navigate to="/login" replace />
-  
-  // Check roles if specified
-  if(roles) {
-    const userRole = staffUser?.staffType || user?.role
-    if(!roles.includes(userRole)) return <Navigate to="/" replace />
+export default function ProtectedRoute({ children, roles = [] }) {
+  const { isAuthenticated, user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
   }
-  
-  return children
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Check role-based access
+  if (roles.length > 0 && user && !roles.includes(user.role)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
 }

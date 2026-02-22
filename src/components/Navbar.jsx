@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import useAuth from '../hooks/useAuth'
-import { Heart, LogOut, Menu, Settings, User as UserIcon } from 'lucide-react'
+import { Heart, LogOut, Menu, Settings, User as UserIcon, UserPlus } from 'lucide-react'
 
 export default function Navbar(){
   const { user, staffUser, signOut } = useAuth()
@@ -12,6 +12,7 @@ export default function Navbar(){
   const currentUser = staffUser || user
   const displayName = staffUser ? `${staffUser.firstName} ${staffUser.lastName}` : (user?.name || 'Guest')
   const displayRole = staffUser ? staffUser.staffType : (user?.role || 'demo')
+  const isAdmin = user?.role === 'Admin'
 
   const onSignOut = () => {
     signOut()
@@ -53,6 +54,11 @@ export default function Navbar(){
 
           {/* Desktop Links */}
           <div className="hidden lg:flex items-center gap-2">
+            {isAdmin && (
+              <Link to="/register-user" className="px-3 py-2 text-white hover:bg-white/20 rounded transition-colors text-sm flex items-center gap-1" title="Register new user">
+                <UserPlus className="w-4 h-4" /> Register User
+              </Link>
+            )}
             <Link to="/profile" className="px-3 py-2 text-white hover:bg-white/20 rounded transition-colors text-sm">Profile</Link>
             <button onClick={onSignOut} className="px-3 py-2 flex items-center gap-1 text-white hover:bg-red-500 rounded transition-colors text-sm">
               <LogOut className="w-4 h-4" /> Sign out
@@ -76,6 +82,11 @@ export default function Navbar(){
             <div className="font-semibold">{displayName}</div>
             <div className="text-xs text-slate-300 capitalize">{displayRole}</div>
           </div>
+          {isAdmin && (
+            <Link to="/register-user" className="block px-3 py-2 text-white hover:bg-white/20 rounded transition-colors flex items-center gap-2">
+              <UserPlus className="w-4 h-4" /> Register User
+            </Link>
+          )}
           <Link to="/profile" className="block px-3 py-2 text-white hover:bg-white/20 rounded transition-colors">Profile</Link>
           <button onClick={onSignOut} className="w-full text-left px-3 py-2 text-white hover:bg-red-500 rounded transition-colors flex items-center gap-2">
             <LogOut className="w-4 h-4" /> Sign out

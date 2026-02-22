@@ -1,32 +1,116 @@
-import React, { Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
-import Preloader from './components/Preloader'
-import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import Appointments from './pages/Appointments'
-import CallConsole from './pages/CallConsole'
-import AdminManage from './pages/AdminManage'
-import StaffManagement from './pages/StaffManagement'
-import Analytics from './pages/Analytics'
-import Profile from './pages/Profile'
-import Ambulance from './pages/Ambulance'
-import ProtectedRoute from './routes/ProtectedRoute'
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { CssBaseline } from '@mui/material';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-export default function App(){
+import { AuthProvider } from './context/AuthContext';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Dashboard from './pages/Dashboard';
+import Appointments from './pages/Appointments';
+import CallLogs from './pages/CallLogs';
+import UserManagement from './pages/UserManagement';
+import DoctorManagement from './pages/DoctorManagement';
+import AdminUserRegistration from './pages/AdminUserRegistration';
+import Profile from './pages/Profile';
+import ProtectedRoute from './routes/ProtectedRoute';
+import Layout from './components/Layout';
+
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#0ea5a4',
+    },
+    secondary: {
+      main: '#ff6b35',
+    },
+  },
+});
+
+export default function App() {
   return (
-    <Suspense fallback={<Preloader />}>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/appointments" element={<ProtectedRoute><Appointments /></ProtectedRoute>} />
-        <Route path="/calls" element={<ProtectedRoute><CallConsole /></ProtectedRoute>} />
-        <Route path="/admin" element={<ProtectedRoute roles={["admin"]}><AdminManage /></ProtectedRoute>} />
-        <Route path="/staff" element={<ProtectedRoute roles={["admin"]}><StaffManagement /></ProtectedRoute>} />
-        <Route path="/analytics" element={<ProtectedRoute roles={["admin"]}><Analytics /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/ambulance" element={<ProtectedRoute><Ambulance /></ProtectedRoute>} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
-  )
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/appointments"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Appointments />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/call-logs"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <CallLogs />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute roles={['Admin']}>
+                <Layout>
+                  <UserManagement />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/register-user"
+            element={
+              <ProtectedRoute roles={['Admin']}>
+                <Layout>
+                  <AdminUserRegistration />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/doctors"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <DoctorManagement />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Profile />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        <ToastContainer position="top-right" autoClose={3000} />
+      </AuthProvider>
+    </ThemeProvider>
+  );
 }

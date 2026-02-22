@@ -1,70 +1,97 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
-import { onAuthChanged, signOut as firebaseSignOut } from '../services/authService'
+/**
+ * Authentication Context
+ */
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import { authAPI } from '../services/api';
 
-const AuthContext = createContext(null)
+const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('demo_user') || 'null')
-    } catch (e) {
-      return null
-    }
-  })
-
-  const [staffUser, setStaffUser] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('staff_user') || 'null')
-    } catch (e) {
-      return null
-    }
-  })
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) localStorage.setItem('demo_user', JSON.stringify(user))
-    else localStorage.removeItem('demo_user')
-  }, [user])
-
-  useEffect(() => {
-    if (staffUser) localStorage.setItem('staff_user', JSON.stringify(staffUser))
-    else localStorage.removeItem('staff_user')
-  }, [staffUser])
-
-  useEffect(()=>{
-    // If Firebase is configured, listen to auth state
-    if(import.meta.env.VITE_FIREBASE_API_KEY){
-      const unsub = onAuthChanged((fbUser)=>{
-        if(fbUser){
-          setUser({ name: fbUser.displayName || fbUser.email, uid: fbUser.uid, role: 'receptionist' })
-        } else setUser(null)
-      })
-      return () => unsub()
+    // Check if user is logged in
+    const storedUser = localStorage.getItem('user');
+    const token = localStorage.getItem('access_token');
+    
+    if (storedUser && token) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+        localStorage.removeItem('user');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+      }
     }
-  },[])
+    setLoading(false);
+  }, []);
 
-  const signInDemo = (role = 'receptionist') => {
-    const u = { name: 'Demo User', role }
-    setUser(u)
-    setStaffUser(null) // Clear staff login if switching to demo
-  }
-
-  const signOut = () => {
-    if(import.meta.env.VITE_FIREBASE_API_KEY){
-      firebaseSignOut().catch(()=>{})
+  const login = async (username, password) => {
+    try {
+      const response = await authAPI.login({ username, password });
+      const { access, refresh, user: userData } = response.data;
+      
+      localStorage.setItem('access_token', access);
+      localStorage.setItem('refresh_token', refresh);
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      setUser(userData);
+      return { success: true };
+    } catch (error) {
+      let errorMessage = 'Login failed. Please check your credentials.';
+      
+      if (error.response) {
+        const status = error.response.status;
+        const data = error.response.data;
+        
+        if (status === 503) {
+          errorMessage = 'Database not initialized. Please contact administrator.';
+        } else if (status === 401) {
+          errorMessage = data?.error || 'Invalid username or password.';
+        } else if (status === 403) {
+          errorMessage = data?.error || 'Account not approved or disabled.';
+        } else if (data?.error) {
+          errorMessage = data.error;
+        }
+      } else if (error.message) {
+        if (error.message.includes('Network Error') || error.message.includes('Failed to fetch')) {
+          errorMessage = 'Cannot connect to server. Please check if backend is running.';
+        }
+      }
+      
+      return {
+        success: false,
+        error: errorMessage,
+      };
     }
-    setUser(null)
-    setStaffUser(null)
-    localStorage.removeItem('staff_token')
-    localStorage.removeItem('staff_user')
+  };
+
+  const logout = () => {
+    authAPI.logout();
+    setUser(null);
+  };
+
+  const value = {
+    user,
+    login,
+    logout,
+    loading,
+    isAuthenticated: !!user,
+    isAdmin: user?.role === 'Admin',
+    isDoctor: user?.role === 'Doctor',
+    isReceptionist: user?.role === 'Receptionist',
+    isStaff: user?.role === 'Staff',
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
   }
-
-  return (
-    <AuthContext.Provider value={{ user, staffUser, signInDemo, signOut, setUser, setStaffUser }}>{children}</AuthContext.Provider>
-  )
-}
-
-export function useAuthContext() {
-  return useContext(AuthContext)
-}
-
-export default AuthContext
+  return context;
+};
