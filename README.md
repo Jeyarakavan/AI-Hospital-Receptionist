@@ -175,7 +175,7 @@ The `.env` file is already created in `backend/` directory. Update it with your 
 
 ```env
 # Update MongoDB password
-MONGODB_URI=mongodb+srv://Rakavan:YOUR_ACTUAL_PASSWORD@rakavan.v2vzewk.mongodb.net/
+MONGODB_URI=mongodb+srv://UserName:PASSWORD@rakavan.v2vzewk.mongodb.net/
 
 # Update PostgreSQL credentials if different
 DB_PASSWORD=your_postgres_password
@@ -295,7 +295,7 @@ VITE_API_BASE_URL=http://localhost:8000/api
    - Update `backend/.env`:
 
    ```env
-   MONGODB_URI=mongodb+srv://Rakavan:YOUR_PASSWORD@rakavan.v2vzewk.mongodb.net/
+   MONGODB_URI=mongodb+srv://Username:YOUR_PASSWORD@rakavan.v2vzewk.mongodb.net/
    MONGODB_DB_NAME=hospital_ai_logs
    ```
 
@@ -334,7 +334,7 @@ DB_HOST=localhost
 DB_PORT=5432
 
 # MongoDB Connection
-MONGODB_URI=mongodb+srv://Rakavan:<db_password>@rakavan.v2vzewk.mongodb.net/
+MONGODB_URI=mongodb+srv://Username:<db_password>@rakavan.v2vzewk.mongodb.net/
 MONGODB_DB_NAME=hospital_ai_logs
 
 # JWT Settings
