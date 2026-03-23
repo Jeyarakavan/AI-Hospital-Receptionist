@@ -20,7 +20,6 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(','
 
 # Application definition
 INSTALLED_APPS = [
-    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -31,7 +30,6 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'django_filters',
-    'channels',
     'api',
 ]
 
@@ -65,30 +63,18 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'hospital_system.wsgi.application'
-ASGI_APPLICATION = 'hospital_system.asgi.application'
 
-# Database
-# Default keeps PostgreSQL for production parity; local setup can opt into sqlite.
-DB_ENGINE = config('DB_ENGINE', default='postgresql').strip().lower()
-
-if DB_ENGINE == 'sqlite':
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / config('SQLITE_NAME', default='db.sqlite3'),
-        }
+# Database - PostgreSQL
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('DB_NAME', default='hospital_db'),
+        'USER': config('DB_USER', default='postgres'),
+        'PASSWORD': config('DB_PASSWORD', default='postgres'),
+        'HOST': config('DB_HOST', default='localhost'),
+        'PORT': config('DB_PORT', default='5432'),
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': config('DB_NAME', default='hospital_db'),
-            'USER': config('DB_USER', default='postgres'),
-            'PASSWORD': config('DB_PASSWORD', default='postgres'),
-            'HOST': config('DB_HOST', default='localhost'),
-            'PORT': config('DB_PORT', default='5432'),
-        }
-    }
+}
 
 # MongoDB Configuration
 MONGODB_URI = config('MONGODB_URI', default='mongodb+srv://Rakavan:<db_password>@rakavan.v2vzewk.mongodb.net/')
@@ -170,55 +156,10 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
-# Cache / Redis settings (used by call sessions and channels)
-REDIS_URL = config('REDIS_URL', default='redis://127.0.0.1:6379/1')
-USE_REDIS_CACHE = config('USE_REDIS_CACHE', default=False, cast=bool)
-
-if USE_REDIS_CACHE:
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': REDIS_URL,
-        }
-    }
-else:
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'hospital-ai-local-cache',
-        }
-    }
-
-if USE_REDIS_CACHE:
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG': {
-                'hosts': [REDIS_URL],
-            },
-        }
-    }
-else:
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels.layers.InMemoryChannelLayer',
-        }
-    }
-
 # Twilio Settings
 TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')
 TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')
 TWILIO_PHONE_NUMBER = config('TWILIO_PHONE_NUMBER', default='')
-TWILIO_VALIDATE_REQUEST = config('TWILIO_VALIDATE_REQUEST', default=False, cast=bool)
-HUMAN_RECEPTION_TRANSFER_NUMBER = config('HUMAN_RECEPTION_TRANSFER_NUMBER', default='')
-EMERGENCY_TRANSFER_NUMBER = config('EMERGENCY_TRANSFER_NUMBER', default='')
-
-# OpenAI settings
-OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
-OPENAI_MODEL = config('OPENAI_MODEL', default='gpt-4o-mini')
-
-# Open-source Call AI agent security
-CALL_AI_SHARED_TOKEN = config('CALL_AI_SHARED_TOKEN', default='')
 
 # Email Settings (SendGrid)
 SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')

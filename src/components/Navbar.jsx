@@ -1,129 +1,98 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  AppBar,
-  Toolbar,
-  IconButton,
-  Typography,
-  Box,
-  Avatar,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  Badge,
-  Tooltip,
-} from '@mui/material';
-import {
-  Menu as MenuIcon,
-  Person,
-  Logout,
-  Notifications,
-  Wifi,
-  WifiOff,
-} from '@mui/icons-material';
-import useAuth from '../hooks/useAuth';
-import { useSocket } from '../context/SocketContext';
+import React from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import useAuth from '../hooks/useAuth'
+import { Heart, LogOut, Menu, Settings, User as UserIcon, UserPlus } from 'lucide-react'
 
-const Navbar = ({ onMenuClick }) => {
-  const [anchorEl, setAnchorEl] = useState(null);
-  const { user, logout } = useAuth();
-  const { connected: isConnected } = useSocket();
-  const navigate = useNavigate();
+export default function Navbar(){
+  const { user, staffUser, signOut } = useAuth()
+  const nav = useNavigate()
+  const [menuOpen, setMenuOpen] = React.useState(false)
 
-  const handleMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
+  // Use staffUser if logged in as staff, otherwise use regular user
+  const currentUser = staffUser || user
+  const displayName = staffUser ? `${staffUser.firstName} ${staffUser.lastName}` : (user?.name || 'Guest')
+  const displayRole = staffUser ? staffUser.staffType : (user?.role || 'demo')
+  const isAdmin = user?.role === 'Admin'
 
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
+  const onSignOut = () => {
+    signOut()
+    nav('/login')
+  }
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-    handleMenuClose();
-  };
-
-  const handleProfile = () => {
-    navigate('/profile');
-    handleMenuClose();
-  };
+  // Hospital branding from localStorage or defaults
+  const hospitalLogo = localStorage.getItem('hospital_logo') || null
+  const hospitalName = localStorage.getItem('hospital_name') || 'AI Hospital Receptionist'
 
   return (
-    <AppBar
-      position="static"
-      color="inherit"
-      elevation={0}
-      sx={{
-        borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-        backgroundColor: 'background.paper',
-      }}
-    >
-      <Toolbar>
-        <IconButton
-          edge="start"
-          color="inherit"
-          aria-label="menu"
-          onClick={onMenuClick}
-          sx={{ mr: 2 }}
-        >
-          <MenuIcon />
-        </IconButton>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          {/* Page Title can go here */}
-        </Typography>
+    <nav className="bg-gradient-medical shadow-lg sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+        {/* Left: Logo & Hospital Name */}
+        <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          {hospitalLogo ? (
+            <img src={hospitalLogo} alt="Hospital" className="h-12 w-12 rounded-full object-cover border-2 border-white" />
+          ) : (
+            <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center">
+              <Heart className="w-6 h-6 text-medical-primary" />
+            </div>
+          )}
+          <div className="hidden sm:block">
+            <div className="text-lg font-bold text-white">{hospitalName}</div>
+            <div className="text-xs text-slate-100">24/7 Receptionist</div>
+          </div>
+        </Link>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Tooltip title={isConnected ? 'Connected' : 'Disconnected'}>
-            <IconButton color={isConnected ? 'success' : 'error'}>
-              {isConnected ? <Wifi /> : <WifiOff />}
-            </IconButton>
-          </Tooltip>
+        {/* Right: User Info & Menu */}
+        <div className="flex items-center gap-4">
+          {/* User Info */}
+          <div className="hidden md:flex items-center gap-2 text-white">
+            <UserIcon className="w-4 h-4" />
+            <div className="text-sm">
+              <div className="font-semibold">{displayName}</div>
+              <div className="text-xs text-slate-200 capitalize">{displayRole}</div>
+            </div>
+          </div>
 
-          <IconButton color="inherit">
-            <Badge badgeContent={4} color="error">
-              <Notifications />
-            </Badge>
-          </IconButton>
+          {/* Desktop Links */}
+          <div className="hidden lg:flex items-center gap-2">
+            {isAdmin && (
+              <Link to="/register-user" className="px-3 py-2 text-white hover:bg-white/20 rounded transition-colors text-sm flex items-center gap-1" title="Register new user">
+                <UserPlus className="w-4 h-4" /> Register User
+              </Link>
+            )}
+            <Link to="/profile" className="px-3 py-2 text-white hover:bg-white/20 rounded transition-colors text-sm">Profile</Link>
+            <button onClick={onSignOut} className="px-3 py-2 flex items-center gap-1 text-white hover:bg-red-500 rounded transition-colors text-sm">
+              <LogOut className="w-4 h-4" /> Sign out
+            </button>
+          </div>
 
-          <Tooltip title="Account settings">
-            <IconButton onClick={handleMenuOpen} size="small">
-              <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-                {user?.name?.[0]?.toUpperCase()}
-              </Avatar>
-            </IconButton>
-          </Tooltip>
-        </Box>
+          {/* Mobile Menu Button */}
+          <button 
+            onClick={()=>setMenuOpen(!menuOpen)}
+            className="lg:hidden text-white hover:bg-white/20 p-2 rounded transition-colors"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
 
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleMenuClose}
-          anchorOrigin={{
-            vertical: 'bottom',
-            horizontal: 'right',
-          }}
-          transformOrigin={{
-            vertical: 'top',
-            horizontal: 'right',
-          }}
-        >
-          <MenuItem onClick={handleProfile}>
-            <ListItemIcon>
-              <Person fontSize="small" />
-            </ListItemIcon>
-            Profile
-          </MenuItem>
-          <MenuItem onClick={handleLogout}>
-            <ListItemIcon>
-              <Logout fontSize="small" />
-            </ListItemIcon>
-            Logout
-          </MenuItem>
-        </Menu>
-      </Toolbar>
-    </AppBar>
-  );
-};
-
-export default Navbar;
+      {/* Mobile Menu */}
+      {menuOpen && (
+        <div className="lg:hidden bg-medical-secondary border-t border-white/20 p-4 space-y-2">
+          <div className="text-white text-sm mb-3">
+            <div className="font-semibold">{displayName}</div>
+            <div className="text-xs text-slate-300 capitalize">{displayRole}</div>
+          </div>
+          {isAdmin && (
+            <Link to="/register-user" className="block px-3 py-2 text-white hover:bg-white/20 rounded transition-colors flex items-center gap-2">
+              <UserPlus className="w-4 h-4" /> Register User
+            </Link>
+          )}
+          <Link to="/profile" className="block px-3 py-2 text-white hover:bg-white/20 rounded transition-colors">Profile</Link>
+          <button onClick={onSignOut} className="w-full text-left px-3 py-2 text-white hover:bg-red-500 rounded transition-colors flex items-center gap-2">
+            <LogOut className="w-4 h-4" /> Sign out
+          </button>
+        </div>
+      )}
+    </nav>
+  )
+}

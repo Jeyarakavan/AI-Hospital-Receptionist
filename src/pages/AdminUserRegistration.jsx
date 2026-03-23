@@ -187,6 +187,16 @@ export default function AdminUserRegistration() {
       data.append('receptionist_id_card', idCard);
     }
 
+    // Log FormData contents for debugging
+    console.log('FormData contents:');
+    for (let [key, value] of data.entries()) {
+      if (value instanceof File) {
+        console.log(`  ${key}: File(${value.name}, ${value.size} bytes)`);
+      } else {
+        console.log(`  ${key}: "${value}"`);
+      }
+    }
+
     try {
       const response = await authAPI.registerByAdmin(data);
       setSuccessData(response.data.user);

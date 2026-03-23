@@ -11,14 +11,3 @@ PyJWT==2.8.0
 twilio==8.10.0
 sendgrid==6.11.0
 python-dotenv==1.0.0
-channels==4.1.0
-daphne>=4.0.0
-channels-redis==4.2.0
-openai==1.68.2
-redis==5.2.1
-django-cacheops==7.1
-dateparser==1.2.0
-requests==2.32.3
-rapidfuzz==3.9.6
-faster-whisper==1.1.0
-setuptools<81

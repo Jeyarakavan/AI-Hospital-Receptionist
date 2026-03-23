@@ -33,24 +33,9 @@ A comprehensive, production-ready Hospital Management System with AI-powered fea
 ### External Services
 - **SMS**: Twilio
 - **Email**: SendGrid
-- **Telephony**: Twilio, Asterisk (for AI call routing)
-- **Real-time**: Django Channels WebSocket (`ws://<host>/ws/calls/`)
+- **Telephony**: Twilio, Asterisk (for future AI integration)
 
 ## ✨ Features
-
-### 🤖 AI Receptionist
-- Twilio voice webhooks for inbound calls (`/api/twilio/voice/`, `/api/twilio/gather/`, `/api/twilio/status/`)
-- LLM-driven NLP orchestration (`backend/api/nlp_service.py`) with strict JSON responses
-- Emergency keyword detection with immediate escalation flow
-- Human handover queue events over WebSocket (`ws://<host>/ws/calls/`)
-- Live **CallConsole** dashboard for monitoring active AI calls and human queue
-- Simulate incoming call (`POST /api/twilio/simulate/`) for local testing without Twilio
-- Transfer active call to human agent (`POST /api/calls/<call_sid>/transfer/`)
-- Live call snapshot (`GET /api/live-calls/`) for polling fallback
-- Call AI intake form (`POST /api/call-ai/intake/`) — stores structured `CallReceptionRequest` records
-- Call AI requests list (`GET /api/call-ai/requests/`) with filtering
-- Vocabulary endpoint (`GET /api/call-ai/vocabulary/`) for NLP hint tuning
-- Full transcript call logging support in MongoDB (`store_call_log`)
 
 ### 🔐 Authentication & Authorization
 - User registration with role-based fields
@@ -85,16 +70,12 @@ A comprehensive, production-ready Hospital Management System with AI-powered fea
 - Call history tracking
 - Intent detection and response logging
 
-### � Ambulance Dispatch
-- Submit ambulance requests (public — no auth required)
-- Admin/staff can view all requests and update dispatch status (`pending → dispatched → en_route → completed`)
-- `GET /api/ambulance/`, `POST /api/ambulance/`, `PATCH /api/ambulance/<id>/`
-
 ### 📊 Dashboard Analytics
 - Role-based dashboard views
-- Full analytics stats for Admin: `total_doctors`, `total_patients`, `total_appointments`, `total_calls`, `total_staff`, `avg_call_duration`, `staff_breakdown`, `completed_appointments`, `pending_appointments`, `cancelled_appointments`, `today_appointments`, `pending_users`
-- Today's appointments and pending approvals
-- Recent call logs (MongoDB)
+- Statistics (doctors, patients, appointments)
+- Today's appointments
+- Recent call logs
+- Pending approvals (Admin)
 
 ### 📧 Notifications
 - SMS notifications via Twilio
@@ -111,64 +92,42 @@ A comprehensive, production-ready Hospital Management System with AI-powered fea
 ## 📁 Project Structure
 
 ```
-AI-Hospital-Receptionist/
+AI Project For Hospital/
 ├── backend/                          # Django Backend
 │   ├── api/                          # Main API app
-│   │   ├── models.py                 # ORM models (User, Doctor, Appointment, AmbulanceRequest, ...)
+│   │   ├── models.py                 # PostgreSQL models
 │   │   ├── serializers.py            # DRF serializers
-│   │   ├── views.py                  # API views + AmbulanceViewSet + dashboard_stats
+│   │   ├── views.py                  # API views
 │   │   ├── urls.py                   # URL routing
-│   │   ├── twilio_views.py           # Twilio webhooks + simulate + transfer
-│   │   ├── call_ai_views.py          # Call AI intake / requests / vocabulary
-│   │   ├── consumers.py              # Django Channels WebSocket consumer
-│   │   ├── call_session.py           # In-memory call session manager
-│   │   ├── nlp_service.py            # OpenAI-backed NLP (intent + slot extraction)
-│   │   ├── services.py               # Business logic (SMS, email, notifications)
-│   │   ├── permissions.py            # Custom DRF permissions
-│   │   ├── mongodb_service.py        # MongoDB call log operations
-│   │   └── migrations/               # Django DB migrations
-│   ├── call_ai/                      # Asterisk AGI AI call scripts
-│   │   ├── agi_receptionist.py       # Main AGI script
-│   │   ├── state_machine.py          # Call state machine
-│   │   ├── intent_classifier.py      # Local intent classifier
-│   │   ├── stt_whisper.py            # Whisper STT integration
-│   │   └── tts_piper.py              # Piper TTS integration
+│   │   ├── services.py              # Business logic
+│   │   ├── permissions.py            # Custom permissions
+│   │   └── mongodb_service.py        # MongoDB operations
 │   ├── hospital_system/              # Django project settings
 │   │   ├── settings.py               # Django configuration
-│   │   ├── asgi.py                   # ASGI config (Channels)
-│   │   └── urls.py                   # Root URL config
-│   ├── manage.py                     # Django management script
+│   │   ├── urls.py                   # Root URL config
+│   │   └── wsgi.py                   # WSGI config
+│   ├── manage.py                      # Django management script
 │   ├── requirements.txt              # Python dependencies
-│   └── .env                          # Environment variables
+│   └── .env                           # Environment variables
 │
 ├── src/                              # React Frontend
 │   ├── components/                   # Reusable components
-│   │   ├── CallCard.jsx              # Active call card with transfer button
-│   │   ├── LiveCallsWidget.jsx       # Live calls sidebar widget
-│   │   ├── Layout.jsx                # Main layout with sidebar
-│   │   └── ...                       # Navbar, Sidebar, Modal, etc.
+│   │   └── Layout.jsx                # Main layout with sidebar
 │   ├── pages/                        # Page components
-│   │   ├── Dashboard.jsx             # Role-based stats dashboard
-│   │   ├── CallConsole.jsx           # Real-time AI call monitoring + simulate/transfer
-│   │   ├── CallLogs.jsx              # Historical call logs
-│   │   ├── Appointments.jsx          # Appointment management
-│   │   ├── Availability.jsx          # Doctor availability schedule
-│   │   ├── Analytics.jsx             # Analytics charts
-│   │   ├── Ambulance.jsx             # Ambulance request form
-│   │   ├── UserManagement.jsx        # User management (Admin)
+│   │   ├── Login.jsx                 # Login page
+│   │   ├── Signup.jsx                # Registration page
+│   │   ├── Dashboard.jsx             # Dashboard
+│   │   ├── Appointments.jsx         # Appointment management
+│   │   ├── UserManagement.jsx       # User management (Admin)
 │   │   ├── DoctorManagement.jsx      # Doctor list
+│   │   ├── CallLogs.jsx              # Call logs view
 │   │   ├── Settings.jsx              # Site settings - logo, banner (Admin)
-│   │   ├── News.jsx                  # Hospital news
+│   │   ├── News.jsx                  # Hospital news (all view; Admin add/delete)
 │   │   └── Profile.jsx               # User profile
 │   ├── services/                     # API services
-│   │   ├── api.js                    # Axios API client (ambulanceAPI, callAIAPI, ...)
-│   │   └── websocket.js              # WebSocket helpers
+│   │   └── api.js                    # Axios API client
 │   ├── context/                      # React Context
-│   │   ├── AuthContext.jsx           # Authentication state
-│   │   └── SocketContext.jsx         # Django Channels WebSocket state
-│   ├── hooks/                        # Custom React hooks
-│   │   ├── useLiveCalls.js           # Active calls via SocketContext
-│   │   └── ...                       # useAppointments, useAuth, etc.
+│   │   └── AuthContext.jsx           # Authentication context
 │   ├── routes/                       # Route components
 │   │   └── ProtectedRoute.jsx        # Protected route wrapper
 │   ├── App.jsx                       # Main app component
@@ -176,7 +135,6 @@ AI-Hospital-Receptionist/
 │
 ├── package.json                      # Frontend dependencies
 ├── vite.config.js                    # Vite configuration
-├── index.html                        # HTML entry (Google Fonts via <link>)
 ├── .env                              # Frontend environment variables
 └── README.md                         # This file
 ```
@@ -224,31 +182,11 @@ pip install -r requirements.txt
 The `.env` file is already created in `backend/` directory. Update it with your credentials:
 
 ```env
-# Update MongoDB URI if using cloud/local MongoDB
+# Update MongoDB password
 MONGODB_URI=mongodb+srv://UserName:PASSWORD@rakavan.v2vzewk.mongodb.net/
 
 # Update PostgreSQL credentials if different
 DB_PASSWORD=your_postgres_password
-
-# AI receptionist settings
-OPENAI_API_KEY=your_openai_key
-OPENAI_MODEL=gpt-4o-mini
-REDIS_URL=redis://127.0.0.1:6379/1
-USE_REDIS_CACHE=False
-
-TWILIO_ACCOUNT_SID=...
-TWILIO_AUTH_TOKEN=...
-TWILIO_PHONE_NUMBER=...
-TWILIO_VALIDATE_REQUEST=False
-HUMAN_RECEPTION_TRANSFER_NUMBER=+94XXXXXXXXX
-EMERGENCY_TRANSFER_NUMBER=+94XXXXXXXXX
-```
-
-If PostgreSQL is not running locally, this project supports local sqlite quick-start by using:
-
-```env
-DB_ENGINE=sqlite
-SQLITE_NAME=db.sqlite3
 ```
 
 #### 2.4 Run Migrations
@@ -300,32 +238,7 @@ npm install
 The `.env` file is already created in the root directory with:
 ```env
 VITE_API_BASE_URL=http://localhost:8000/api
-VITE_WS_BASE_URL=ws://127.0.0.1:8000
 ```
-
-### Redis and Channels (for WebSocket live call updates)
-
-For local development, the Django Channels layer falls back gracefully when Redis is unavailable — the WebSocket still connects but real-time call events require Redis.
-
-To enable full real-time support:
-1. Install Redis locally or use a managed endpoint
-2. Set in `backend/.env`: `REDIS_URL=redis://127.0.0.1:6379/1` and `USE_REDIS_CACHE=True`
-3. Start the server:
-
-```bash
-cd backend
-python manage.py runserver
-```
-
-For production, run with Daphne/Uvicorn and configure reverse proxy WebSocket forwarding.
-
-The frontend connects to `ws://127.0.0.1:8000/ws/calls/` with a JWT token for real-time call events (`call_started`, `call_ended`, `call_updated`).
-
-### Twilio Webhook Setup
-
-In Twilio console, set Voice webhooks:
-- Incoming call: `POST https://<your-domain>/api/twilio/voice/`
-- Status callback: `POST https://<your-domain>/api/twilio/status/`
 
 ### Step 4: Database Setup
 
@@ -616,20 +529,13 @@ Authorization: Bearer <token>
 GET /api/dashboard/
 Authorization: Bearer <token>
 
-Response (Admin):
+Response:
 {
   "total_doctors": integer,
   "total_patients": integer,
   "total_appointments": integer,
-  "completed_appointments": integer,
-  "pending_appointments": integer,
-  "cancelled_appointments": integer,
   "today_appointments": integer,
   "pending_users": integer,
-  "total_staff": integer,
-  "total_calls": integer,
-  "avg_call_duration": number,
-  "staff_breakdown": { "Doctor": n, "Receptionist": n, "Staff": n },
   "recent_calls": [...]
 }
 ```
@@ -640,55 +546,6 @@ Response (Admin):
 GET /api/call-logs/
 Authorization: Bearer <token>
 Query Params: limit, skip
-```
-
-### Ambulance Endpoints
-
-```
-POST /api/ambulance/
-# No auth required
-Body: { patient_name, contact_number, pickup_location, condition? }
-
-GET /api/ambulance/
-Authorization: Bearer <token>
-
-PATCH /api/ambulance/<uuid>/
-Authorization: Bearer <token>
-Body: { status: "pending" | "dispatched" | "en_route" | "completed" }
-```
-
-### Call AI Endpoints
-
-```
-POST /api/call-ai/intake/
-# Submit structured call reception request from AI call
-Authorization: Bearer <token> or AllowAny (configured)
-Body: { caller_number, intent, details, ... }
-
-GET /api/call-ai/requests/
-Authorization: Bearer <token>
-Query Params: status, intent, limit
-
-GET /api/call-ai/vocabulary/
-Authorization: Bearer <token>
-```
-
-### Twilio / Live Call Endpoints
-
-```
-POST /api/twilio/voice/         # Twilio inbound call webhook
-POST /api/twilio/gather/        # Twilio speech gather webhook
-POST /api/twilio/status/        # Twilio call status callback
-
-POST /api/twilio/simulate/
-Authorization: Bearer <token>
-Body: { caller?: "string" }     # Simulate incoming call (local testing)
-
-GET /api/live-calls/
-Authorization: Bearer <token>   # Snapshot of currently active calls
-
-POST /api/calls/<call_sid>/transfer/
-Authorization: Bearer <token>   # Transfer call to human agent
 ```
 
 ### Site Settings (Logo, Banner)
@@ -731,13 +588,12 @@ Or: { email: string, subject: string, message: string }
 
 ### Admin
 - Full system access
-- Approve/reject/disable user registrations
+- Approve/reject user registrations
 - Manage all users
 - Create and manage appointments
-- View all call logs and analytics dashboard
+- View all call logs
 - Send hospital news to all users
-- Manage ambulance request statuses
-- Simulate incoming AI calls and transfer to human
+- View dashboard statistics
 
 ### Doctor
 - View own appointments
@@ -747,9 +603,9 @@ Or: { email: string, subject: string, message: string }
 - Cannot create appointments
 
 ### Receptionist
-- Create and edit appointments (up to one day before)
+- Create appointments
+- Edit appointments (before one day)
 - View all appointments
-- Monitor live AI calls via CallConsole
 - View call logs
 - View doctors and patients
 - Cannot approve users
@@ -798,16 +654,6 @@ Or: { email: string, subject: string, message: string }
 - `booking_time` (DateTime)
 - `status` (String: Pending, Confirmed, Cancelled, Completed)
 - `created_by` (Foreign Key → users)
-
-#### ambulance_requests
-- `id` (UUID, Primary Key)
-- `patient_name` (String)
-- `contact_number` (String)
-- `pickup_location` (Text)
-- `condition` (Text, optional)
-- `status` (String: pending, dispatched, en_route, completed)
-- `created_at` (DateTime)
-- `updated_at` (DateTime)
 
 ### MongoDB Collections
 

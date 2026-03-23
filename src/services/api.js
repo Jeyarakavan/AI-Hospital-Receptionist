@@ -115,25 +115,7 @@ export const patientAPI = {
 export const appointmentAPI = {
   getAll: (params) => api.get('/appointments/', { params }),
   getById: (id) => api.get(`/appointments/${id}/`),
-  create: (formData) => {
-    const rawTime = formData.appointment_time || formData.time;
-    const formattedTime = typeof rawTime === 'string' && rawTime.includes(':')
-      ? (rawTime.split(':').length === 2 ? `${rawTime}:00` : rawTime)
-      : rawTime;
-
-    const payload = {
-      patient_name: formData.patient_name || formData.patientName,
-      patient_age: parseInt(formData.patient_age || formData.patientAge, 10),
-      patient_disease: formData.patient_disease || formData.patientDisease,
-      contact_number: formData.contact_number || formData.contactNumber,
-      address: formData.address ?? '',
-      doctor: formData.doctor || formData.doctorId,
-      appointment_date: formData.appointment_date || formData.date,
-      appointment_time: formattedTime,
-    };
-
-    return api.post('/appointments/', payload);
-  },
+  create: (data) => api.post('/appointments/', data),
   update: (id, data) => api.patch(`/appointments/${id}/`, data),
   delete: (id) => api.delete(`/appointments/${id}/`),
   accept: (id) => api.post(`/appointments/${id}/accept/`),
@@ -207,20 +189,6 @@ export const chatAPI = {
 // Send message to specific user (email)
 export const messageAPI = {
   sendToUser: (data) => api.post('/send-message/', data),
-};
-
-// Ambulance APIs
-export const ambulanceAPI = {
-  create: (data) => api.post('/ambulance/', data),
-  getAll: (params) => api.get('/ambulance/', { params }),
-  updateStatus: (id, status) => api.patch(`/ambulance/${id}/`, { status }),
-};
-
-// Call AI APIs
-export const callAIAPI = {
-  getRequests: (params) => api.get('/call-ai/requests/', { params }),
-  simulateCall: (caller) => api.post('/twilio/simulate/', { caller }),
-  transferCall: (callSid) => api.post(`/calls/${callSid}/transfer/`),
 };
 
 export default api;

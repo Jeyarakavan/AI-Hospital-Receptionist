@@ -1,37 +1,12 @@
-import React from 'react';
-import { Box, CircularProgress, Typography, keyframes } from '@mui/material';
+import React from 'react'
 
-const fadeIn = keyframes`
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-`;
-
-const Preloader = ({ message = "Loading..." }) => {
+export default function Preloader(){
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100vh',
-        backgroundColor: 'background.default',
-        animation: `${fadeIn} 0.5s ease-in-out`,
-      }}
-    >
-      <CircularProgress size={60} />
-      <Typography
-        variant="h6"
-        sx={{ marginTop: 3, color: 'text.secondary' }}
-      >
-        {message}
-      </Typography>
-    </Box>
-  );
-};
-
-export default Preloader;
+    <div className="h-screen flex items-center justify-center bg-gradient-to-br from-white to-slate-50">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-full bg-primary animate-spin-slow" style={{borderTop:'4px solid rgba(255,255,255,0.4)'}}></div>
+        <div className="text-gray-600">Loading…</div>
+      </div>
+    </div>
+  )
+}

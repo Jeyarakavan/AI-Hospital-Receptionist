@@ -20,8 +20,6 @@ from .models import (
     SiteSettings,
     HospitalNews,
     ChatMessage,
-    CallReceptionRequest,
-    AmbulanceRequest,
 )
 from .serializers import (
     UserRegistrationSerializer,
@@ -38,7 +36,6 @@ from .serializers import (
     SendMessageSerializer,
     ChatMessageSerializer,
     SimpleUserSerializer,
-    AmbulanceRequestSerializer,
 )
 from .services import AppointmentService, NotificationService
 from .mongodb_service import MongoDBService
@@ -400,7 +397,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 AppointmentSerializer(appointment).data,
                 status=status.HTTP_201_CREATED
             )
-
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def update(self, request, *args, **kwargs):
@@ -539,27 +536,14 @@ def dashboard_stats(request):
     stats = {}
     
     if user.role == 'Admin':
-        role_breakdown = {
-            item['role']: item['count']
-            for item in User.objects.filter(status='Approved')
-            .values('role')
-            .annotate(count=Count('id'))
-        }
         stats = {
             'total_doctors': Doctor.objects.filter(user__status='Approved').count(),
             'total_patients': Patient.objects.count(),
             'total_appointments': Appointment.objects.count(),
-            'completed_appointments': Appointment.objects.filter(status='Completed').count(),
-            'pending_appointments': Appointment.objects.filter(status='Pending').count(),
-            'cancelled_appointments': Appointment.objects.filter(status='Cancelled').count(),
             'today_appointments': Appointment.objects.filter(
                 appointment_date=timezone.now().date()
             ).count(),
             'pending_users': User.objects.filter(status='Pending').count(),
-            'total_staff': User.objects.filter(status='Approved').exclude(role='Admin').count(),
-            'total_calls': CallReceptionRequest.objects.count(),
-            'avg_call_duration': 0,
-            'staff_breakdown': role_breakdown,
         }
     elif user.role == 'Doctor':
         doctor = Doctor.objects.get(user=user)
@@ -604,8 +588,10 @@ def call_logs(request):
         logs = MongoDBService.get_call_logs(limit=limit, skip=skip)
         return Response({'logs': logs})
     except Exception as e:
-        logger.warning(f"call_logs error: {e}")
-        return Response({'logs': []})
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 @api_view(['GET'])
@@ -625,8 +611,10 @@ def notifications(request):
         )
         return Response({'notifications': notifications})
     except Exception as e:
-        logger.warning(f"notifications error: {e}")
-        return Response({'notifications': []})
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 @api_view(['GET'])
@@ -769,24 +757,3 @@ def send_message_to_user(request):
             pass
         return Response({'message': f'Message sent to {to_email}'})
     return Response({'error': 'Failed to send email. Check SendGrid configuration.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class AmbulanceViewSet(viewsets.ModelViewSet):
-    """Ambulance dispatch requests - public POST, authenticated GET."""
-    queryset = AmbulanceRequest.objects.all()
-    serializer_class = AmbulanceRequestSerializer
-    http_method_names = ['get', 'post', 'patch', 'head', 'options']
-
-    def get_permissions(self):
-        if self.action == 'create':
-            return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
-
-
-@api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated, IsAdmin])
-def staff_list(request):
-    """Return all users for the admin staff management page."""
-    users = User.objects.all().order_by('full_name')
-    serializer = UserSerializer(users, many=True, context={'request': request})
-    return Response(serializer.data)
