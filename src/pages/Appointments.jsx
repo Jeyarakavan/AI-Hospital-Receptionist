@@ -22,6 +22,7 @@ import {
   TextField,
   MenuItem,
   Typography,
+  Alert,
 } from '@mui/material';
 import { Edit, Delete, Check, Close } from '@mui/icons-material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -40,6 +41,7 @@ export default function Appointments() {
   const [availability, setAvailability] = useState([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [freeSlots, setFreeSlots] = useState([]);
   const [formData, setFormData] = useState({
     patient_name: '',
     patient_age: '',
@@ -78,6 +80,26 @@ export default function Appointments() {
     };
 
     loadAvailability();
+  }, [formData.doctor, formData.appointment_date]);
+
+  useEffect(() => {
+    const loadFreeSlots = async () => {
+      if (!formData.doctor || !formData.appointment_date) {
+        setFreeSlots([]);
+        return;
+      }
+      try {
+        const res = await appointmentAPI.getAvailableSlots({
+          doctor: formData.doctor,
+          appointment_date: formData.appointment_date.format('YYYY-MM-DD'),
+        });
+        const row = (res.data || [])[0];
+        setFreeSlots(row?.available_slots || []);
+      } catch {
+        setFreeSlots([]);
+      }
+    };
+    loadFreeSlots();
   }, [formData.doctor, formData.appointment_date]);
 
   const loadAppointments = async () => {
@@ -142,6 +164,10 @@ export default function Appointments() {
       }
 
       const selectedTime = formData.appointment_time.format('HH:mm:ss');
+      if (freeSlots.length && !freeSlots.includes(selectedTime)) {
+        toast.error('Selected time is already booked or unavailable. Please pick a free slot.');
+        return;
+      }
       const isWithinSlot = availability.some((slot) => {
         const start = slot.start_time;
         const end = slot.end_time;
@@ -376,6 +402,11 @@ export default function Appointments() {
                 slotProps={{ textField: { fullWidth: true, required: true } }}
               />
             </LocalizationProvider>
+            {!!freeSlots.length && (
+              <Alert severity="info">
+                Free Slots: {freeSlots.join(', ')}
+              </Alert>
+            )}
           </Box>
         </DialogContent>
         <DialogActions>

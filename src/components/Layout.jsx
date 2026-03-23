@@ -24,6 +24,7 @@ import {
   Menu as MenuIcon,
   Dashboard,
   CalendarToday,
+  Badge,
   People,
   LocalHospital,
   Phone,
@@ -42,6 +43,7 @@ const drawerWidth = 260;
 const menuItems = [
   { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard', roles: ['Admin', 'Doctor', 'Receptionist', 'Staff'] },
   { text: 'Appointments', icon: <CalendarToday />, path: '/appointments', roles: ['Admin', 'Doctor', 'Receptionist'] },
+  { text: 'Patients', icon: <Badge />, path: '/patients', roles: ['Admin', 'Doctor', 'Receptionist', 'Staff'] },
   { text: 'Availability', icon: <AccessTime />, path: '/availability', roles: ['Admin', 'Doctor'] },
   { text: 'Chat', icon: <Chat />, path: '/chat', roles: ['Admin', 'Doctor', 'Receptionist', 'Staff'] },
   { text: 'Doctors', icon: <LocalHospital />, path: '/doctors', roles: ['Admin', 'Receptionist'] },

@@ -9,6 +9,11 @@ from .views import (
     DoctorViewSet,
     DoctorAvailabilityViewSet,
     PatientViewSet,
+    PatientMedicalProfileViewSet,
+    PatientCaseViewSet,
+    PatientEncounterViewSet,
+    PrescriptionItemViewSet,
+    PatientAdmissionViewSet,
     AppointmentViewSet,
     ChatMessageViewSet,
     dashboard_stats,
@@ -23,6 +28,7 @@ from .views import (
     hospital_news_delete,
     send_message_to_user,
     chat_user_search,
+    patient_full_history,
 )
 
 router = DefaultRouter()
@@ -31,6 +37,11 @@ router.register(r'users', UserViewSet, basename='user')
 router.register(r'doctors', DoctorViewSet, basename='doctor')
 router.register(r'availability', DoctorAvailabilityViewSet, basename='availability')
 router.register(r'patients', PatientViewSet, basename='patient')
+router.register(r'patient-medical-profiles', PatientMedicalProfileViewSet, basename='patient-medical-profile')
+router.register(r'patient-cases', PatientCaseViewSet, basename='patient-case')
+router.register(r'patient-encounters', PatientEncounterViewSet, basename='patient-encounter')
+router.register(r'prescriptions', PrescriptionItemViewSet, basename='prescription')
+router.register(r'patient-admissions', PatientAdmissionViewSet, basename='patient-admission')
 router.register(r'appointments', AppointmentViewSet, basename='appointment')
 router.register(r'chat-messages', ChatMessageViewSet, basename='chat-message')
 
@@ -48,4 +59,5 @@ urlpatterns = [
     path('site-settings/update/', site_settings_update, name='site-settings-update'),
     path('send-message/', send_message_to_user, name='send-message'),
     path('chat-users/', chat_user_search, name='chat-users'),
+    path('patients/<uuid:patient_id>/history/', patient_full_history, name='patient-history'),
 ]
