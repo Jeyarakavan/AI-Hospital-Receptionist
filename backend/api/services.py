@@ -6,16 +6,42 @@ from datetime import datetime, timedelta
 from django.conf import settings
 from twilio.rest import Client as TwilioClient
 import sendgrid
-from sendgrid.helpers.mail import Mail
+from sendgrid.helpers.mail import Mail, Email
 import logging
 from .models import Appointment, Doctor, DoctorAvailability
 from .mongodb_service import MongoDBService
+from django.db.models import Q
 
 logger = logging.getLogger(__name__)
 
 
 class NotificationService:
     """Service for sending notifications"""
+
+    @staticmethod
+    def _render_transactional_html(title, intro, lines=None, footer_note=None):
+        lines = lines or []
+        line_items = "".join(
+            f"<li style='margin: 6px 0; color: #334155;'>{line}</li>" for line in lines
+        )
+        footer = footer_note or "This is an automated service email from WeHealth."
+        return f"""
+        <div style="font-family: Arial, sans-serif; background: #f8fafc; padding: 24px;">
+          <div style="max-width: 620px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+            <div style="background: #0d9488; color: white; padding: 14px 20px; font-size: 18px; font-weight: 700;">
+              WeHealth Notification
+            </div>
+            <div style="padding: 20px;">
+              <h2 style="margin: 0 0 12px 0; color: #0f172a;">{title}</h2>
+              <p style="margin: 0 0 14px 0; color: #334155;">{intro}</p>
+              <ul style="padding-left: 18px; margin: 0 0 16px 0;">
+                {line_items}
+              </ul>
+              <p style="margin: 0; color: #64748b; font-size: 12px;">{footer}</p>
+            </div>
+          </div>
+        </div>
+        """
     
     @staticmethod
     def send_sms(phone_number, message):
@@ -48,9 +74,10 @@ class NotificationService:
                 return False
             
             sg = sendgrid.SendGridAPIClient(api_key=settings.SENDGRID_API_KEY)
+            from_email = Email(settings.EMAIL_FROM, settings.EMAIL_FROM_NAME)
             
             mail = Mail(
-                from_email=(settings.EMAIL_FROM, settings.EMAIL_FROM_NAME),
+                from_email=from_email,
                 to_emails=to_email,
                 subject=subject,
                 plain_text_content=message,
@@ -58,25 +85,77 @@ class NotificationService:
             )
             
             response = sg.send(mail)
-            logger.info(f"Email sent to {to_email}: Status {response.status_code}")
-            return True
+            if 200 <= response.status_code < 300:
+                logger.info(f"Email sent to {to_email}: Status {response.status_code}")
+                return True
+
+            logger.error(
+                "SendGrid non-success response to %s: status=%s body=%s",
+                to_email,
+                response.status_code,
+                getattr(response, "body", b""),
+            )
+            return False
         except Exception as e:
             logger.error(f"Error sending email: {str(e)}")
             return False
     
     @staticmethod
     def notify_appointment_confirmed(appointment):
-        """Send SMS when appointment is confirmed"""
-        message = f"Your appointment with Dr. {appointment.doctor.user.full_name} is confirmed for {appointment.appointment_date} at {appointment.appointment_time}. Thank you!"
+        """Send doctor + patient notifications when appointment is confirmed"""
+        doctor_email = appointment.doctor.user.email
+        patient_email = appointment.created_by.email if appointment.created_by and appointment.created_by.email else None
+        appointment_details = (
+            f"Patient: {appointment.patient_name}\n"
+            f"Age: {appointment.patient_age}\n"
+            f"Reason: {appointment.patient_disease}\n"
+            f"Date: {appointment.appointment_date}\n"
+            f"Time: {appointment.appointment_time}\n"
+            f"Booked At: {appointment.booking_time}\n"
+            f"Doctor: Dr. {appointment.doctor.user.full_name} ({appointment.doctor.specialization})"
+        )
+        message = f"Appointment confirmed.\n{appointment_details}"
+        html_content = NotificationService._render_transactional_html(
+            title="Appointment Confirmed",
+            intro="An appointment has been confirmed with the following details:",
+            lines=[
+                f"Patient: {appointment.patient_name}",
+                f"Age: {appointment.patient_age}",
+                f"Reason: {appointment.patient_disease}",
+                f"Date: {appointment.appointment_date}",
+                f"Time: {appointment.appointment_time}",
+                f"Booked At: {appointment.booking_time}",
+                f"Doctor: Dr. {appointment.doctor.user.full_name} ({appointment.doctor.specialization})",
+            ],
+            footer_note="If you did not expect this, contact hospital support immediately.",
+        )
         NotificationService.send_sms(appointment.contact_number, message)
-        
-        # Save notification to MongoDB
+
+        if doctor_email:
+            NotificationService.send_email(
+                to_email=doctor_email,
+                subject='Appointment Confirmed - Doctor Notification',
+                message=message,
+                html_content=html_content,
+            )
+        if patient_email:
+            NotificationService.send_email(
+                to_email=patient_email,
+                subject='Appointment Confirmed - Patient Copy',
+                message=message,
+                html_content=html_content,
+            )
+
         MongoDBService.save_notification(
-            user_id=None,  # Patient notifications
+            user_id=str(appointment.created_by_id) if appointment.created_by_id else None,
             notification_type='appointment_confirmed',
             title='Appointment Confirmed',
             message=message,
-            metadata={'appointment_id': str(appointment.id)}
+            metadata={
+                'appointment_id': str(appointment.id),
+                'doctor_email': doctor_email,
+                'patient_email': patient_email,
+            }
         )
     
     @staticmethod
@@ -163,6 +242,35 @@ class AppointmentService:
             return False, "Time slot already booked"
         
         return True, "Available"
+
+    @staticmethod
+    def get_available_slots(doctor, appointment_date, slot_minutes=30):
+        """Return free times for a doctor on a specific date."""
+        day_of_week = appointment_date.weekday()
+        windows = DoctorAvailability.objects.filter(
+            doctor=doctor,
+            day_of_week=day_of_week,
+            is_available=True,
+        ).order_by('start_time')
+
+        booked_times = set(
+            Appointment.objects.filter(
+                doctor=doctor,
+                appointment_date=appointment_date,
+                status__in=['Pending', 'Confirmed'],
+            ).values_list('appointment_time', flat=True)
+        )
+
+        free_slots = []
+        for window in windows:
+            current = datetime.combine(appointment_date, window.start_time)
+            end = datetime.combine(appointment_date, window.end_time)
+            while current <= end:
+                current_time = current.time().replace(microsecond=0)
+                if current_time not in booked_times:
+                    free_slots.append(current_time.strftime('%H:%M:%S'))
+                current += timedelta(minutes=slot_minutes)
+        return free_slots
     
     @staticmethod
     def accept_appointment(appointment):

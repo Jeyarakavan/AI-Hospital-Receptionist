@@ -1,5 +1,6 @@
 /**
  * Signup/Registration Page - uses site logo and banner from settings
+ * With swap animation to Login page
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -21,6 +22,7 @@ import { toast } from 'react-toastify';
 
 export default function Signup() {
   const [siteSettings, setSiteSettings] = useState({ site_name: 'WeHealth', logo_url: null, banner_url: null });
+  const [isExiting, setIsExiting] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -47,16 +49,13 @@ export default function Signup() {
   }, []);
 
   const validateImageFile = (file) => {
-    // Validate that the file is a valid image
     const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    const maxSize = 10 * 1024 * 1024;
     
-    // Check file size
     if (file.size > maxSize) {
       throw new Error('Image file size must be less than 10MB');
     }
     
-    // Check file extension
     const fileName = file.name.toLowerCase();
     const fileExt = fileName.split('.').pop();
     
@@ -91,11 +90,17 @@ export default function Signup() {
     }
   };
 
+  const handleSwapToLogin = () => {
+    setIsExiting(true);
+    setTimeout(() => {
+      navigate('/login');
+    }, 400);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    // Validate all required fields
     if (!formData.full_name?.trim()) {
       toast.error('Full Name is required');
       setLoading(false);
@@ -132,14 +137,12 @@ export default function Signup() {
       return;
     }
 
-    // Validate role-specific required fields
     if (formData.role === 'Doctor' && !formData.specialization?.trim()) {
       toast.error('Specialization is required for Doctors');
       setLoading(false);
       return;
     }
 
-    // Validate passwords
     if (!formData.password || !formData.confirm_password) {
       toast.error('Password and Confirm Password are required');
       setLoading(false);
@@ -158,10 +161,7 @@ export default function Signup() {
       return;
     }
 
-    // Create FormData - append all fields properly
     const data = new FormData();
-    
-    // Append all form fields
     data.append('username', formData.username);
     data.append('email', formData.email);
     data.append('password', formData.password);
@@ -172,7 +172,6 @@ export default function Signup() {
     data.append('address', formData.address);
     data.append('role', formData.role);
     
-    // Append optional fields
     if (formData.about_yourself) {
       data.append('about_yourself', formData.about_yourself);
     }
@@ -181,7 +180,6 @@ export default function Signup() {
       data.append('profile_picture', profilePicture);
     }
 
-    // Add role-specific fields
     if (formData.role === 'Doctor') {
       data.append('specialization', formData.specialization || '');
       if (idCard) {
@@ -193,19 +191,10 @@ export default function Signup() {
       data.append('receptionist_id_card', idCard);
     }
 
-    // Log FormData contents for debugging
-    console.log('FormData contents:');
-    for (let [key, value] of data.entries()) {
-      if (value instanceof File) {
-        console.log(`  ${key}: File(${value.name}, ${value.size} bytes)`);
-      } else {
-        console.log(`  ${key}: "${value}"`);
-      }
-    }
     try {
       const response = await authAPI.register(data);
       toast.success('Registration successful! Waiting for admin approval.');
-      navigate('/login');
+      handleSwapToLogin();
     } catch (error) {
       let errorMsg = 'Registration failed. Please try again.';
       
@@ -216,7 +205,6 @@ export default function Signup() {
         if (status === 503) {
           errorMsg = 'Database not initialized. Please contact administrator.';
         } else if (status === 400) {
-          // Check for specific field errors first
           const errorKeys = Object.keys(responseData || {});
           
           if (responseData?.username) {
@@ -345,10 +333,58 @@ export default function Signup() {
         alignItems: 'center',
         justifyContent: 'center',
         padding: 2,
+        animation: isExiting ? 'slideOutRight 0.4s ease-in-out forwards' : 'slideInLeft 0.4s ease-in-out',
+        '@keyframes slideInLeft': {
+          '0%': {
+            transform: 'translateX(-100%)',
+            opacity: 0,
+          },
+          '100%': {
+            transform: 'translateX(0)',
+            opacity: 1,
+          },
+        },
+        '@keyframes slideOutRight': {
+          '0%': {
+            transform: 'translateX(0)',
+            opacity: 1,
+          },
+          '100%': {
+            transform: 'translateX(100%)',
+            opacity: 0,
+          },
+        },
       }}
     >
       <Container maxWidth="md">
-        <Paper elevation={10} sx={{ p: 4, borderRadius: 3 }}>
+        <Paper
+          elevation={10}
+          sx={{
+            p: 4,
+            borderRadius: 3,
+            animation: isExiting ? 'cardExitSignup 0.3s ease-in-out forwards' : 'cardEnterSignup 0.5s ease-in-out',
+            '@keyframes cardEnterSignup': {
+              '0%': {
+                transform: 'scale(0.95) translateY(20px)',
+                opacity: 0,
+              },
+              '100%': {
+                transform: 'scale(1) translateY(0)',
+                opacity: 1,
+              },
+            },
+            '@keyframes cardExitSignup': {
+              '0%': {
+                transform: 'scale(1) translateY(0)',
+                opacity: 1,
+              },
+              '100%': {
+                transform: 'scale(0.95) translateY(-20px)',
+                opacity: 0,
+              },
+            },
+          }}
+        >
           <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
             {siteSettings.logo_url ? (
               <Box component="img" src={siteSettings.logo_url} alt="Logo" sx={{ width: 88, height: 88, objectFit: 'contain' }} />
@@ -541,7 +577,18 @@ export default function Signup() {
               <Grid item xs={12}>
                 <Typography variant="body2" sx={{ textAlign: 'center', mt: 2 }}>
                   Already have an account?{' '}
-                  <Link to="/login" component={Link}>
+                  <Link
+                    component="button"
+                    onClick={handleSwapToLogin}
+                    sx={{
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        transition: 'transform 0.2s',
+                      },
+                    }}
+                  >
                     Sign In
                   </Link>
                 </Typography>

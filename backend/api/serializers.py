@@ -2,6 +2,7 @@
 Serializers for API endpoints
 """
 from rest_framework import serializers
+from datetime import date
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from PIL import Image
@@ -13,6 +14,12 @@ from .models import (
     Receptionist,
     DoctorAvailability,
     Patient,
+    PasswordResetOTP,
+    PatientMedicalProfile,
+    PatientCase,
+    PatientEncounter,
+    PrescriptionItem,
+    PatientAdmission,
     Appointment,
     SiteSettings,
     HospitalNews,
@@ -216,9 +223,198 @@ class PatientSerializer(serializers.ModelSerializer):
     """Serializer for patient"""
     class Meta:
         model = Patient
-        fields = ['id', 'name', 'age', 'phone_number', 'email', 'address', 'created_at', 'updated_at']
+        fields = [
+            'id',
+            'name',
+            'age',
+            'phone_number',
+            'email',
+            'primary_disease',
+            'patient_type',
+            'address',
+            'created_at',
+            'updated_at',
+        ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+
+class PatientMedicalProfileSerializer(serializers.ModelSerializer):
+    """Serializer for extended patient medical profile"""
+
+    class Meta:
+        model = PatientMedicalProfile
+        fields = [
+            'id',
+            'patient',
+            'ic_number',
+            'emergency_contact_name',
+            'emergency_contact_phone',
+            'allergies',
+            'chronic_conditions',
+            'baseline_summary',
+            'created_by',
+            'updated_by',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_by', 'updated_by', 'created_at', 'updated_at']
+
+    def validate_ic_number(self, value):
+        normalized = value.strip().upper()
+        qs = PatientMedicalProfile.objects.filter(ic_number__iexact=normalized)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError('IC number already exists.')
+        return normalized
+
+
+class PatientCaseSerializer(serializers.ModelSerializer):
+    """Serializer for patient care case"""
+    patient_name = serializers.CharField(source='patient.name', read_only=True)
+    assigned_doctor_name = serializers.CharField(source='assigned_doctor.user.full_name', read_only=True)
+    encounters = serializers.SerializerMethodField()
+    admissions = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PatientCase
+        fields = [
+            'id',
+            'patient',
+            'patient_name',
+            'assigned_doctor',
+            'assigned_doctor_name',
+            'diagnosis',
+            'current_condition',
+            'next_checkup_date',
+            'status',
+            'is_active',
+            'encounters',
+            'admissions',
+            'created_by',
+            'updated_by',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_by', 'updated_by', 'created_at', 'updated_at']
+
+    def validate_next_checkup_date(self, value):
+        if value and value < date.today():
+            raise serializers.ValidationError('Next checkup date cannot be in the past.')
+        return value
+
+    def get_encounters(self, obj):
+        encounters = obj.encounters.select_related('doctor__user').prefetch_related('prescriptions').all()
+        return PatientEncounterSerializer(encounters, many=True).data
+
+    def get_admissions(self, obj):
+        admissions = obj.admissions.all()
+        return PatientAdmissionSerializer(admissions, many=True).data
+
+
+class PrescriptionItemSerializer(serializers.ModelSerializer):
+    """Serializer for medicine items"""
+
+    class Meta:
+        model = PrescriptionItem
+        fields = ['id', 'encounter', 'medicine_name', 'dosage', 'frequency', 'duration', 'instructions', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class PatientEncounterSerializer(serializers.ModelSerializer):
+    """Serializer for doctor encounters"""
+    doctor_name = serializers.CharField(source='doctor.user.full_name', read_only=True)
+    prescriptions = PrescriptionItemSerializer(many=True, required=False)
+
+    class Meta:
+        model = PatientEncounter
+        fields = [
+            'id',
+            'patient_case',
+            'doctor',
+            'doctor_name',
+            'notes',
+            'current_situation',
+            'follow_up_plan',
+            'encounter_date',
+            'next_checkup_date',
+            'prescriptions',
+            'created_by',
+            'updated_by',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_by', 'updated_by', 'created_at', 'updated_at']
+
+    def validate_next_checkup_date(self, value):
+        if value and value < date.today():
+            raise serializers.ValidationError('Next checkup date cannot be in the past.')
+        return value
+
+    def create(self, validated_data):
+        prescriptions_data = validated_data.pop('prescriptions', [])
+        encounter = PatientEncounter.objects.create(**validated_data)
+        for item in prescriptions_data:
+            PrescriptionItem.objects.create(encounter=encounter, **item)
+        return encounter
+
+    def update(self, instance, validated_data):
+        prescriptions_data = validated_data.pop('prescriptions', None)
+        for key, value in validated_data.items():
+            setattr(instance, key, value)
+        instance.save()
+
+        if prescriptions_data is not None:
+            instance.prescriptions.all().delete()
+            for item in prescriptions_data:
+                PrescriptionItem.objects.create(encounter=instance, **item)
+        return instance
+
+
+class PatientAdmissionSerializer(serializers.ModelSerializer):
+    """Serializer for patient admission timeline"""
+    stay_days = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = PatientAdmission
+        fields = [
+            'id',
+            'patient_case',
+            'admitted_on',
+            'discharged_on',
+            'is_currently_admitted',
+            'notes',
+            'stay_days',
+            'created_by',
+            'updated_by',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'stay_days', 'created_by', 'updated_by', 'created_at', 'updated_at']
+
+    def validate(self, attrs):
+        admitted_on = attrs.get('admitted_on', getattr(self.instance, 'admitted_on', None))
+        discharged_on = attrs.get('discharged_on', getattr(self.instance, 'discharged_on', None))
+        is_current = attrs.get('is_currently_admitted', getattr(self.instance, 'is_currently_admitted', True))
+        patient_case = attrs.get('patient_case', getattr(self.instance, 'patient_case', None))
+
+        if discharged_on and admitted_on and discharged_on < admitted_on:
+            raise serializers.ValidationError({'discharged_on': 'Discharge date cannot be before admit date.'})
+
+        if patient_case and is_current:
+            qs = PatientAdmission.objects.filter(patient_case=patient_case, is_currently_admitted=True)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError('Only one active admission is allowed per case.')
+        return attrs
+
+
+class PatientHistorySerializer(serializers.Serializer):
+    """Combined patient timeline serializer"""
+    patient = PatientSerializer()
+    medical_profile = PatientMedicalProfileSerializer(allow_null=True)
+    cases = PatientCaseSerializer(many=True)
 
 class AppointmentSerializer(serializers.ModelSerializer):
     """Serializer for appointment"""
@@ -253,6 +449,24 @@ class LoginSerializer(serializers.Serializer):
     """Serializer for login"""
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
+
+
+class ForgotPasswordRequestSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    email = serializers.EmailField()
+
+
+class VerifyOTPSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    email = serializers.EmailField()
+    otp = serializers.CharField(min_length=6, max_length=6)
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    email = serializers.EmailField()
+    otp = serializers.CharField(min_length=6, max_length=6)
+    new_password = serializers.CharField(write_only=True, validators=[validate_password])
 
 
 class UserApprovalSerializer(serializers.Serializer):
