@@ -142,7 +142,7 @@ export default function News() {
         </List>
       </Paper>
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth disableRestoreFocus>
         <DialogTitle>Post News</DialogTitle>
         <DialogContent>
           <TextField

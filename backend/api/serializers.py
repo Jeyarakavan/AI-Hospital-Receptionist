@@ -2,6 +2,7 @@
 Serializers for API endpoints
 """
 from rest_framework import serializers
+from datetime import date
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from PIL import Image
@@ -17,6 +18,8 @@ from .models import (
     SiteSettings,
     HospitalNews,
     ChatMessage,
+    CallReceptionRequest,
+    AmbulanceRequest,
 )
 
 
@@ -235,18 +238,80 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'appointment_date', 'appointment_time', 'booking_time',
             'status', 'status_display', 'created_by', 'created_by_name', 'updated_at'
         ]
-        read_only_fields = ['id', 'booking_time', 'updated_at']
+        read_only_fields = ['id', 'created_by', 'booking_time', 'status', 'updated_at']
+
+    def validate_appointment_date(self, value):
+        if value < date.today():
+            raise serializers.ValidationError("Appointment date cannot be in the past.")
+        return value
+
+    def validate_patient_age(self, value):
+        if not isinstance(value, int) or value <= 0 or value > 150:
+            raise serializers.ValidationError("Patient age must be a valid integer between 1 and 150.")
+        return value
+
+    def validate(self, data):
+        doctor = data.get('doctor')
+        appointment_date = data.get('appointment_date')
+        appointment_time = data.get('appointment_time')
+
+        if doctor and appointment_date and appointment_time:
+            existing = Appointment.objects.filter(
+                doctor=doctor,
+                appointment_date=appointment_date,
+                appointment_time=appointment_time,
+                status__in=['Pending', 'Confirmed']
+            )
+            if self.instance:
+                existing = existing.exclude(pk=self.instance.pk)
+            if existing.exists():
+                raise serializers.ValidationError(
+                    "This time slot is already booked for the selected doctor."
+                )
+        return data
 
 
 class AppointmentCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating appointment"""
+    address = serializers.CharField(required=False, default='', allow_blank=True)
+
     class Meta:
         model = Appointment
         fields = [
             'patient_name', 'patient_age', 'patient_disease',
             'contact_number', 'address', 'doctor',
-            'appointment_date', 'appointment_time', 'status'
+            'appointment_date', 'appointment_time',
         ]
+
+    def validate_appointment_date(self, value):
+        if value < date.today():
+            raise serializers.ValidationError("Appointment date cannot be in the past.")
+        return value
+
+    def validate_patient_age(self, value):
+        if not isinstance(value, int) or value <= 0 or value > 150:
+            raise serializers.ValidationError("Patient age must be a valid integer between 1 and 150.")
+        return value
+
+    def validate(self, data):
+        doctor = data.get('doctor')
+        appointment_date = data.get('appointment_date')
+        appointment_time = data.get('appointment_time')
+
+        if doctor and appointment_date and appointment_time:
+            existing = Appointment.objects.filter(
+                doctor=doctor,
+                appointment_date=appointment_date,
+                appointment_time=appointment_time,
+                status__in=['Pending', 'Confirmed']
+            )
+            if self.instance:
+                existing = existing.exclude(pk=self.instance.pk)
+            if existing.exists():
+                raise serializers.ValidationError(
+                    "This time slot is already booked for the selected doctor."
+                )
+        return data
 
 
 class LoginSerializer(serializers.Serializer):
@@ -370,3 +435,51 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 
         user = self.context['request'].user
         return ChatMessage.objects.create(sender=user, receiver=receiver, **validated_data)
+
+
+class CallReceptionRequestSerializer(serializers.ModelSerializer):
+    """Serializer for AI receptionist structured call records."""
+
+    class Meta:
+        model = CallReceptionRequest
+        fields = [
+            'id',
+            'call_id',
+            'caller_id',
+            'patient_name',
+            'phone_number',
+            'doctor_name',
+            'department',
+            'appointment_date',
+            'appointment_time',
+            'reason_for_visit',
+            'urgency',
+            'confirmation_status',
+            'transcript',
+            'detected_intent',
+            'confidence_score',
+            'extracted_slots',
+            'emergency_flag',
+            'handoff_flag',
+            'final_status',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class AmbulanceRequestSerializer(serializers.ModelSerializer):
+    """Serializer for ambulance dispatch requests."""
+
+    class Meta:
+        model = AmbulanceRequest
+        fields = [
+            'id',
+            'patient_name',
+            'contact_number',
+            'pickup_location',
+            'condition',
+            'status',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'status', 'created_at']

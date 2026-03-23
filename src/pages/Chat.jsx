@@ -7,7 +7,7 @@ import {
   Divider,
   IconButton,
   List,
-  ListItem,
+  ListItemButton,
   ListItemAvatar,
   ListItemText,
   Paper,
@@ -144,9 +144,8 @@ export default function Chat() {
             ) : (
               <List dense>
                 {users.map((u) => (
-                  <ListItem
+                  <ListItemButton
                     key={u.id}
-                    button
                     selected={selectedUser?.id === u.id}
                     onClick={() => setSelectedUser(u)}
                   >
@@ -160,7 +159,7 @@ export default function Chat() {
                       secondary={u.email}
                       secondaryTypographyProps={{ noWrap: true }}
                     />
-                  </ListItem>
+                  </ListItemButton>
                 ))}
               </List>
             )}

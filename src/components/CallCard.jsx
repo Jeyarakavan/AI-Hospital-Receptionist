@@ -1,18 +1,58 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react';
+import {
+  Card,
+  CardContent,
+  Typography,
+  Box,
+  Chip,
+  LinearProgress,
+  IconButton,
+  Tooltip,
+} from '@mui/material';
+import { PhoneInTalk, TransferWithinAStation } from '@mui/icons-material';
 
-export default function CallCard({call, onPlay, onTransfer}){
+const CallCard = ({ call, onTransfer }) => {
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    const startedAt = new Date(call.started_at);
+    const timer = setInterval(() => {
+      const now = new Date();
+      setDuration(Math.floor((now - startedAt) / 1000));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [call.started_at]);
+
+  const formatDuration = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
   return (
-    <div className="p-3 bg-white rounded flex items-center justify-between gap-4 shadow-sm hover:shadow-md transition-shadow animate-float">
-      <div>
-        <div className="font-medium">{call.caller || 'Unknown Caller'}</div>
-        <div className="text-sm text-slate-500">{call.problem || 'No details'}</div>
-        {call.transcription && <div className="mt-2 text-sm text-slate-600">🔊 {call.transcription}</div>}
-        <div className="text-xs text-slate-400">{new Date(call.receivedAt || Date.now()).toLocaleString()}</div>
-      </div>
-      <div className="flex items-center gap-2">
-        <button aria-label="Play recording" onClick={onPlay} className="px-3 py-1 rounded bg-slate-100 hover:bg-slate-200">Play</button>
-        <button aria-label="Transfer call" onClick={onTransfer} className="px-3 py-1 rounded bg-primary text-white">Transfer</button>
-      </div>
-    </div>
-  )
-}
+    <Card variant="outlined">
+      <CardContent>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" fontWeight="bold">
+            {call.caller_number}
+          </Typography>
+          <Chip icon={<PhoneInTalk />} label={formatDuration(duration)} color="primary" size="small" />
+        </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          Intent: {call.intent || 'N/A'}
+        </Typography>
+        <LinearProgress variant="determinate" value={(duration % 60) * (100/60)} sx={{ my: 2 }} />
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Tooltip title="Take over call">
+            <IconButton size="small" onClick={onTransfer}>
+              <TransferWithinAStation />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default CallCard;

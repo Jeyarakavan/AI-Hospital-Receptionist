@@ -1,6 +1,3 @@
-/**
- * Protected Route Component
- */
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -11,14 +8,7 @@ export default function ProtectedRoute({ children, roles = [] }) {
 
   if (loading) {
     return (
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: '100vh',
-        }}
-      >
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
         <CircularProgress />
       </Box>
     );
@@ -28,7 +18,6 @@ export default function ProtectedRoute({ children, roles = [] }) {
     return <Navigate to="/login" replace />;
   }
 
-  // Check role-based access
   if (roles.length > 0 && user && !roles.includes(user.role)) {
     return <Navigate to="/" replace />;
   }

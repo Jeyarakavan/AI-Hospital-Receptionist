@@ -1,9 +1,17 @@
-import React from 'react'
+import React from 'react';
+import { Button } from '@mui/material';
 
-export default function AnimatedButton({children, ...props}){
+export default function AnimatedButton({ children, ...props }) {
   return (
-    <button {...props} className={`inline-flex items-center gap-2 px-4 py-2 rounded bg-primary text-white hover:scale-105 transition-transform ${props.className || ''}`}>
+    <Button
+      variant="contained"
+      sx={{
+        transition: 'transform 0.2s',
+        '&:hover': { transform: 'scale(1.05)' },
+      }}
+      {...props}
+    >
       {children}
-    </button>
-  )
+    </Button>
+  );
 }
