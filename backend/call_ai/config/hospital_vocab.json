@@ -1,0 +1,24 @@
+{
+  "doctors": [
+    "Dr. Kumar",
+    "Dr. Perera",
+    "Dr. Silva",
+    "Dr. Fernando"
+  ],
+  "departments": [
+    "Cardiology",
+    "General Medicine",
+    "Pediatrics",
+    "Orthopedics",
+    "ENT",
+    "Neurology",
+    "Dermatology"
+  ],
+  "hospital_phrases": [
+    "book an appointment",
+    "cancel appointment",
+    "reschedule appointment",
+    "talk to staff",
+    "emergency"
+  ]
+}

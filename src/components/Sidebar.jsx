@@ -1,77 +1,144 @@
-import React from 'react'
-import { NavLink } from 'react-router-dom'
-import { Home, Calendar, Phone, Settings, User, Ambulance, Menu, X, Users, BarChart3 } from 'lucide-react'
-import useAuth from '../hooks/useAuth'
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import {
+  Box,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Typography,
+  useTheme,
+  useMediaQuery,
+} from '@mui/material';
+import {
+  Dashboard,
+  CalendarToday,
+  Phone,
+  People,
+  LocalHospital,
+  Settings,
+  NewReleases,
+  AccessTime,
+  Chat,
+  Analytics,
+  MedicalServices,
+  AdminPanelSettings,
+} from '@mui/icons-material';
+import useAuth from '../hooks/useAuth';
 
-const Item = ({to, icon: Icon, children}) => (
-  <NavLink to={to} className={({isActive}) => `flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive? 'bg-medical-primary text-white shadow-lg' : 'text-slate-700 hover:bg-slate-100'}`}>
-    <Icon className="w-5 h-5" />
-    <span className="font-medium">{children}</span>
-  </NavLink>
-)
+const menuItems = [
+    { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard', roles: ['Admin', 'Doctor', 'Receptionist', 'Staff'] },
+    { text: 'Appointments', icon: <CalendarToday />, path: '/appointments', roles: ['Admin', 'Doctor', 'Receptionist'] },
+    { text: 'Availability', icon: <AccessTime />, path: '/availability', roles: ['Admin', 'Doctor'] },
+    { text: 'Call Console', icon: <Phone />, path: '/call-console', roles: ['Admin', 'Receptionist'] },
+    { text: 'Call Logs', icon: <Phone />, path: '/call-logs', roles: ['Admin', 'Receptionist'] },
+    { text: 'Chat', icon: <Chat />, path: '/chat', roles: ['Admin', 'Doctor', 'Receptionist', 'Staff'] },
+    { text: 'News', icon: <NewReleases />, path: '/news', roles: ['Admin', 'Doctor', 'Receptionist', 'Staff'] },
+    { text: 'Ambulance', icon: <MedicalServices />, path: '/ambulance', roles: ['Admin', 'Receptionist'] },
+];
 
-export default function Sidebar(){
-  const [open, setOpen] = React.useState(true)
-  const { user, staffUser } = useAuth()
-  
-  // Determine if user is admin
-  const userRole = staffUser?.staffType || user?.role || 'guest'
-  const isAdmin = userRole === 'admin'
+const adminMenuItems = [
+    { text: 'Analytics', icon: <Analytics />, path: '/analytics', roles: ['Admin'] },
+    { text: 'User Management', icon: <People />, path: '/users', roles: ['Admin'] },
+    { text: 'Staff Management', icon: <LocalHospital />, path: '/staff', roles: ['Admin'] },
+    { text: 'Doctor Management', icon: <LocalHospital />, path: '/doctors', roles: ['Admin'] },
+    { text: 'Admin Management', icon: <AdminPanelSettings />, path: '/admin-manage', roles: ['Admin'] },
+    { text: 'Settings', icon: <Settings />, path: '/settings', roles: ['Admin'] },
+]
+
+const NavItem = ({ item, onClose }) => {
+  const theme = useTheme();
+  const handleClick = () => {
+    // Blur focused element before drawer closes to prevent aria-hidden warning
+    document.activeElement?.blur();
+    onClose();
+  };
+  return (
+    <ListItem disablePadding>
+      <ListItemButton
+        component={NavLink}
+        to={item.path}
+        onClick={handleClick}
+        sx={{
+          color: theme.palette.text.secondary,
+          '&.active': {
+            backgroundColor: theme.palette.primary.light,
+            color: theme.palette.primary.main,
+            borderRight: `4px solid ${theme.palette.primary.main}`,
+            fontWeight: 'bold',
+            '& .MuiListItemIcon-root': {
+              color: theme.palette.primary.main,
+            },
+          },
+          '&:hover': {
+            backgroundColor: theme.palette.primary.light,
+          },
+          margin: '4px 0',
+          borderRadius: '0 20px 20px 0',
+        }}
+      >
+        <ListItemIcon>{item.icon}</ListItemIcon>
+        <ListItemText primary={item.text} />
+      </ListItemButton>
+    </ListItem>
+  );
+};
+
+const Sidebar = ({ isOpen, onClose }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
+  const { user } = useAuth();
+
+  const filteredMenuItems = menuItems.filter(item => item.roles.includes(user?.role));
+  const filteredAdminMenuItems = adminMenuItems.filter(item => item.roles.includes(user?.role));
+
+  const drawerContent = (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Box sx={{ p: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Typography variant="h5" color="primary.main" fontWeight="bold">
+          AI Receptionist
+        </Typography>
+      </Box>
+      <List sx={{ flexGrow: 1, px: 2 }}>
+        {filteredMenuItems.map((item) => (
+          <NavItem key={item.text} item={item} onClose={onClose} />
+        ))}
+        {filteredAdminMenuItems.length > 0 && (
+            <>
+                <Typography variant="overline" sx={{ pl: 2, pt: 2, display: 'block' }}>
+                    Admin
+                </Typography>
+                {filteredAdminMenuItems.map((item) => (
+                    <NavItem key={item.text} item={item} onClose={onClose} />
+                ))}
+            </>
+        )}
+      </List>
+    </Box>
+  );
 
   return (
-    <>
-      {/* Mobile Toggle */}
-      <button 
-        onClick={()=>setOpen(!open)}
-        className="md:hidden fixed bottom-6 right-6 z-40 p-3 rounded-full bg-medical-primary text-white shadow-lg"
-      >
-        {open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-      </button>
+    <Drawer
+      variant={isMobile ? 'temporary' : 'persistent'}
+      open={isOpen}
+      onClose={onClose}
+      ModalProps={{ keepMounted: true, disableRestoreFocus: true }}
+      sx={{
+        width: 280,
+        flexShrink: 0,
+        '& .MuiDrawer-paper': {
+          width: 280,
+          boxSizing: 'border-box',
+          backgroundColor: 'background.paper',
+          borderRight: 'none',
+        },
+      }}
+    >
+      {drawerContent}
+    </Drawer>
+  );
+};
 
-      {/* Desktop Sidebar */}
-      <aside className={`${open ? 'block' : 'hidden'} fixed md:relative md:block w-56 md:w-64 bg-white border-r border-slate-200 h-screen md:h-auto overflow-y-auto z-30`}>
-        <div className="p-4 space-y-2">
-          <div className="px-4 py-3 mb-4">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Menu</h3>
-          </div>
-          
-          <Item to="/" icon={Home}>Dashboard</Item>
-          <Item to="/appointments" icon={Calendar}>Appointments</Item>
-          <Item to="/calls" icon={Phone}>Call Console</Item>
-          <Item to="/ambulance" icon={Ambulance}>Emergency</Item>
-          
-          {/* Admin Section */}
-          {isAdmin && (
-            <>
-              <div className="px-4 py-3 mt-6 mb-2">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Administration</h3>
-              </div>
-              <Item to="/staff" icon={Users}>Staff Management</Item>
-              <Item to="/analytics" icon={BarChart3}>Analytics</Item>
-              <Item to="/admin" icon={Settings}>Settings</Item>
-            </>
-          )}
-          
-          <Item to="/profile" icon={User}>Profile</Item>
-        </div>
-
-        {/* Sidebar Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-200 bg-slate-50">
-          <div className="text-xs text-slate-500 text-center">
-            <div className="font-semibold">AI Hospital</div>
-            <div className="capitalize">{userRole} • v1.0</div>
-            <div className="text-health-green">● Active 24/7</div>
-          </div>
-        </div>
-      </aside>
-
-      {/* Mobile Overlay */}
-      {open && (
-        <div 
-          className="md:hidden fixed inset-0 bg-black/40 z-20"
-          onClick={()=>setOpen(false)}
-        ></div>
-      )}
-    </>
-  )
-}
+export default Sidebar;

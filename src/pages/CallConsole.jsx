@@ -1,40 +1,66 @@
-import React, { useState } from 'react'
-import Navbar from '../components/Navbar'
-import Sidebar from '../components/Sidebar'
-import Footer from '../components/Footer'
-import CallCard from '../components/CallCard'
-import useLiveCalls from '../hooks/useLiveCalls'
-export default function CallConsole(){
-  const calls = useLiveCalls()
-  const onPlay = (c) => { if(c.recordingUrl) window.open(c.recordingUrl, '_blank'); else alert('No recording available') }
-  const transfer = async (c) => {
-    await fetch(`${import.meta.env.VITE_API_BASE_URL}/calls/${c.id}/transfer`, { method: 'POST' })
-  }
+import React from 'react';
+import {
+  Box, Container, Typography, Paper, Button, Grid,
+} from '@mui/material';
+import { Phone } from '@mui/icons-material';
+import { useSocket } from '../context/SocketContext';
+import CallCard from '../components/CallCard';
+import { callAIAPI } from '../services/api';
+import { toast } from 'react-toastify';
+
+export default function CallConsole() {
+  const { activeCalls } = useSocket();
+
+  const handleSimulate = async () => {
+    try {
+      await callAIAPI.simulateCall();
+      toast.success('Simulated incoming call');
+    } catch {
+      toast.error('Failed to simulate call');
+    }
+  };
+
+  const handleTransfer = async (callSid) => {
+    try {
+      await callAIAPI.transferCall(callSid);
+      toast.success('Call transferred');
+    } catch {
+      toast.error('Failed to transfer call');
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <Navbar />
-      <div className="flex flex-1">
-        <Sidebar />
-        <main className="flex-1 p-6">
-          <h1 className="text-2xl font-semibold mb-4">Call Console</h1>
-          <div className="mb-4 flex items-center gap-2">
-            <button onClick={async ()=>{
-              await fetch(`${import.meta.env.VITE_API_BASE_URL}/twilio/webhook`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({From: 'DemoCaller', TranscriptionText: 'I have a fever and headache'})})
-            }} className="px-3 py-2 rounded bg-accent text-white">Simulate Incoming Call</button>
-            <div className="text-sm text-slate-500">Use this to simulate Twilio webhook during development.</div>
-          </div>
+    <Container maxWidth="xl">
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" fontWeight="bold">Call Console</Typography>
+        <Button variant="contained" startIcon={<Phone />} onClick={handleSimulate}>
+          Simulate Incoming Call
+        </Button>
+      </Box>
 
-          <div className="space-y-3">
-            {calls.map((c)=> (
-              <div key={c.id}>
-                <CallCard call={c} onPlay={()=>onPlay(c)} onTransfer={()=>transfer(c)} />
-              </div>
-            ))}
-          </div>
-        </main>
-      </div>
-      <Footer />
-    </div>
-  )
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Use the simulate button to test Twilio webhook during development.
+      </Typography>
+
+      <Grid container spacing={3}>
+        {activeCalls && activeCalls.length > 0 ? (
+          activeCalls.map((call) => (
+            <Grid item xs={12} md={6} key={call.id || call.call_sid}>
+              <CallCard call={call} onTransfer={() => handleTransfer(call.call_sid || call.id)} />
+            </Grid>
+          ))
+        ) : (
+          <Grid item xs={12}>
+            <Paper sx={{ p: 4, textAlign: 'center' }}>
+              <Phone sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary">No active calls</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Incoming calls will appear here in real time.
+              </Typography>
+            </Paper>
+          </Grid>
+        )}
+      </Grid>
+    </Container>
+  );
 }

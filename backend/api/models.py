@@ -281,3 +281,86 @@ class ChatMessage(models.Model):
 
     def __str__(self):
         return f"{self.sender.full_name} → {self.receiver.full_name}: {self.message[:30]}"
+
+
+class CallReceptionRequest(models.Model):
+    """Structured call-intake records created by the voice receptionist."""
+
+    INTENT_CHOICES = [
+        ('BOOK_APPOINTMENT', 'Book Appointment'),
+        ('CANCEL_APPOINTMENT', 'Cancel Appointment'),
+        ('RESCHEDULE_APPOINTMENT', 'Reschedule Appointment'),
+        ('GENERAL_INQUIRY', 'General Inquiry'),
+        ('HUMAN_HANDOFF', 'Human Handoff'),
+        ('EMERGENCY', 'Emergency'),
+    ]
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('confirmed', 'Confirmed'),
+        ('cancelled', 'Cancelled'),
+        ('rescheduled', 'Rescheduled'),
+        ('escalated', 'Escalated'),
+        ('handoff_requested', 'Handoff Requested'),
+        ('failed_capture', 'Failed Capture'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    call_id = models.CharField(max_length=128, unique=True)
+    caller_id = models.CharField(max_length=32, blank=True, default='')
+    patient_name = models.CharField(max_length=255, blank=True, default='')
+    phone_number = models.CharField(max_length=32, blank=True, default='')
+    doctor_name = models.CharField(max_length=255, blank=True, default='')
+    department = models.CharField(max_length=255, blank=True, default='')
+    appointment_date = models.CharField(max_length=32, blank=True, default='')
+    appointment_time = models.CharField(max_length=32, blank=True, default='')
+    reason_for_visit = models.TextField(blank=True, default='')
+    urgency = models.CharField(max_length=32, blank=True, default='normal')
+    confirmation_status = models.CharField(max_length=32, blank=True, default='not_confirmed')
+    detected_intent = models.CharField(max_length=32, choices=INTENT_CHOICES)
+    confidence_score = models.FloatField(default=0.0)
+    transcript = models.TextField(blank=True, default='')
+    extracted_slots = models.JSONField(default=dict, blank=True)
+    emergency_flag = models.BooleanField(default=False)
+    handoff_flag = models.BooleanField(default=False)
+    final_status = models.CharField(max_length=32, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'call_reception_requests'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['created_at']),
+            models.Index(fields=['detected_intent', 'final_status']),
+            models.Index(fields=['caller_id']),
+        ]
+
+    def __str__(self):
+        return f"{self.call_id} - {self.detected_intent} ({self.final_status})"
+
+
+class AmbulanceRequest(models.Model):
+    """Emergency ambulance dispatch requests submitted via the frontend."""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('dispatched', 'Dispatched'),
+        ('en_route', 'En Route'),
+        ('completed', 'Completed'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    patient_name = models.CharField(max_length=255)
+    contact_number = models.CharField(max_length=20)
+    pickup_location = models.TextField()
+    condition = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'ambulance_requests'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.patient_name} - {self.status} ({self.created_at.date()})"
