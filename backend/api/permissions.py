@@ -28,3 +28,36 @@ class IsDoctorOrAdminOrReceptionist(permissions.BasePermission):
             request.user.is_authenticated and
             request.user.role in ['Admin', 'Doctor', 'Receptionist']
         )
+
+
+class CanEditClinicalData(permissions.BasePermission):
+    """Doctors and admins can edit medical records"""
+
+    def has_permission(self, request, view):
+        return (
+            request.user
+            and request.user.is_authenticated
+            and request.user.role in ['Admin', 'Doctor']
+        )
+
+
+class CanManageAdmissions(permissions.BasePermission):
+    """Doctors and admins can manage admissions"""
+
+    def has_permission(self, request, view):
+        return (
+            request.user
+            and request.user.is_authenticated
+            and request.user.role in ['Admin', 'Doctor']
+        )
+
+
+class CanViewPatientHistory(permissions.BasePermission):
+    """Clinical and management roles can view full patient history"""
+
+    def has_permission(self, request, view):
+        return (
+            request.user
+            and request.user.is_authenticated
+            and request.user.role in ['Admin', 'Doctor', 'Receptionist', 'Staff']
+        )

@@ -1,5 +1,6 @@
 /**
  * Login Page - Uses site logo and optional banner from Settings
+ * With swap animation to Signup page
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -16,11 +17,15 @@ import {
   InputAdornment,
   IconButton,
   Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { siteSettingsAPI } from '../services/api';
+import { authAPI, siteSettingsAPI } from '../services/api';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -29,6 +34,13 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [siteSettings, setSiteSettings] = useState({ site_name: 'WeHealth', logo_url: null, banner_url: null });
+  const [isExiting, setIsExiting] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [resetStep, setResetStep] = useState(1);
+  const [resetUsername, setResetUsername] = useState('');
+  const [resetUserEmail, setResetUserEmail] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
   useEffect(() => {
     siteSettingsAPI.getPublic()
@@ -53,12 +65,19 @@ export default function Login() {
     
     if (result.success) {
       toast.success('Login successful!');
-      navigate('/');
+      navigate('/dashboard');
     } else {
       toast.error(result.error || 'Login failed. Please check your credentials.');
     }
     
     setLoading(false);
+  };
+
+  const handleSwapToSignup = () => {
+    setIsExiting(true);
+    setTimeout(() => {
+      navigate('/signup');
+    }, 400);
   };
 
   return (
@@ -72,6 +91,29 @@ export default function Login() {
         alignItems: 'center',
         justifyContent: 'center',
         padding: 2,
+        position: 'relative',
+        overflow: 'hidden',
+        animation: isExiting ? 'slideOutLeft 0.4s ease-in-out forwards' : 'slideInRight 0.4s ease-in-out',
+        '@keyframes slideInRight': {
+          '0%': {
+            transform: 'translateX(100%)',
+            opacity: 0,
+          },
+          '100%': {
+            transform: 'translateX(0)',
+            opacity: 1,
+          },
+        },
+        '@keyframes slideOutLeft': {
+          '0%': {
+            transform: 'translateX(0)',
+            opacity: 1,
+          },
+          '100%': {
+            transform: 'translateX(-100%)',
+            opacity: 0,
+          },
+        },
       }}
     >
       <Container maxWidth="lg">
@@ -103,6 +145,27 @@ export default function Login() {
                   p: 4,
                   background: 'linear-gradient(180deg, #4a90e2 0%, #357abd 100%)',
                   borderRadius: 3,
+                  animation: isExiting ? 'cardExit 0.3s ease-in-out forwards' : 'cardEnter 0.5s ease-in-out',
+                  '@keyframes cardEnter': {
+                    '0%': {
+                      transform: 'scale(0.95) translateY(20px)',
+                      opacity: 0,
+                    },
+                    '100%': {
+                      transform: 'scale(1) translateY(0)',
+                      opacity: 1,
+                    },
+                  },
+                  '@keyframes cardExit': {
+                    '0%': {
+                      transform: 'scale(1) translateY(0)',
+                      opacity: 1,
+                    },
+                    '100%': {
+                      transform: 'scale(0.95) translateY(-20px)',
+                      opacity: 0,
+                    },
+                  },
                 }}
               >
                 <Typography variant="h4" sx={{ color: 'white', mb: 3, fontWeight: 'bold' }}>
@@ -116,7 +179,7 @@ export default function Login() {
                     variant="filled"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                        required
+                    required
                     sx={{
                       mb: 2,
                       '& .MuiFilledInput-root': {
@@ -133,7 +196,7 @@ export default function Login() {
                     variant="filled"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                        required
+                    required
                     sx={{
                       mb: 2,
                       '& .MuiFilledInput-root': {
@@ -167,6 +230,15 @@ export default function Login() {
                       label={<Typography variant="body2" sx={{ color: 'white' }}>Remember me</Typography>}
                     />
                   </Box>
+                  <Box sx={{ mb: 2 }}>
+                    <Link
+                      component="button"
+                      onClick={() => { setForgotOpen(true); setResetStep(1); }}
+                      sx={{ color: 'white', textDecoration: 'underline' }}
+                    >
+                      Forgot password?
+                    </Link>
+                  </Box>
 
                   <Button
                     type="submit"
@@ -193,7 +265,7 @@ export default function Login() {
                     </Typography>
                     <Link
                       component="button"
-                      onClick={() => navigate('/signup')}
+                      onClick={handleSwapToSignup}
                       sx={{
                         color: 'white',
                         textDecoration: 'underline',
@@ -201,6 +273,8 @@ export default function Login() {
                         cursor: 'pointer',
                         '&:hover': {
                           color: '#f0f0f0',
+                          transform: 'scale(1.05)',
+                          transition: 'transform 0.2s',
                         },
                       }}
                     >
@@ -235,6 +309,28 @@ export default function Login() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 overflow: 'hidden',
+                animation: isExiting ? 'rightExit 0.3s ease-in-out forwards' : 'rightEnter 0.5s ease-in-out 0.1s forwards',
+                opacity: 0,
+                '@keyframes rightEnter': {
+                  '0%': {
+                    transform: 'translateX(50px)',
+                    opacity: 0,
+                  },
+                  '100%': {
+                    transform: 'translateX(0)',
+                    opacity: 1,
+                  },
+                },
+                '@keyframes rightExit': {
+                  '0%': {
+                    transform: 'translateX(0)',
+                    opacity: 1,
+                  },
+                  '100%': {
+                    transform: 'translateX(-50px)',
+                    opacity: 0,
+                  },
+                },
               }}
             >
               {/* Decorative shapes */}
@@ -317,6 +413,114 @@ export default function Login() {
           </Grid>
         </Grid>
       </Container>
+
+      <Dialog open={forgotOpen} onClose={() => setForgotOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Reset Password</DialogTitle>
+        <DialogContent>
+          {resetStep === 1 && (
+            <>
+              <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                Enter your username and email. If both match, we will send a 6-digit OTP for forgot password.
+                Type that OTP here and do not share it with anyone.
+              </Typography>
+              <TextField
+                fullWidth
+                margin="dense"
+                label="Your Username"
+                value={resetUsername}
+                onChange={(e) => setResetUsername(e.target.value)}
+              />
+              <TextField
+                fullWidth
+                margin="dense"
+                label="Your Email"
+                value={resetUserEmail}
+                onChange={(e) => setResetUserEmail(e.target.value)}
+              />
+            </>
+          )}
+          {resetStep === 2 && (
+            <TextField
+              fullWidth
+              margin="dense"
+              label="6 Digit OTP"
+              value={resetOtp}
+              onChange={(e) => setResetOtp(e.target.value)}
+            />
+          )}
+          {resetStep === 3 && (
+            <TextField
+              fullWidth
+              margin="dense"
+              type="password"
+              label="New Password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setForgotOpen(false)}>Close</Button>
+          {resetStep === 1 && (
+            <Button
+              variant="contained"
+              onClick={async () => {
+                try {
+                  await authAPI.requestPasswordResetOTP({ username: resetUsername, email: resetUserEmail });
+                  toast.success('OTP sent to email');
+                  setResetStep(2);
+                } catch {
+                  toast.error('Username and email do not match or OTP send failed');
+                }
+              }}
+            >
+              Send OTP
+            </Button>
+          )}
+          {resetStep === 2 && (
+            <Button
+              variant="contained"
+              onClick={async () => {
+                try {
+                  await authAPI.verifyPasswordResetOTP({ username: resetUsername, email: resetUserEmail, otp: resetOtp });
+                  toast.success('OTP verified');
+                  setResetStep(3);
+                } catch {
+                  toast.error('Invalid OTP');
+                }
+              }}
+            >
+              Verify OTP
+            </Button>
+          )}
+          {resetStep === 3 && (
+            <Button
+              variant="contained"
+              onClick={async () => {
+                try {
+                  await authAPI.resetPassword({
+                    username: resetUsername,
+                    email: resetUserEmail,
+                    otp: resetOtp,
+                    new_password: newPassword,
+                  });
+                  toast.success('Password updated');
+                  setForgotOpen(false);
+                  setResetStep(1);
+                  setResetUsername('');
+                  setResetUserEmail('');
+                  setResetOtp('');
+                  setNewPassword('');
+                } catch (e) {
+                  toast.error(e?.response?.data?.new_password?.[0] || 'Failed to reset password');
+                }
+              }}
+            >
+              Change Password
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

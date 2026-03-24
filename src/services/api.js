@@ -52,6 +52,9 @@ export const authAPI = {
   register: (data) => api.post('/auth/register/', data),
   registerByAdmin: (data) => api.post('/auth/register_by_admin/', data),
   login: (data) => api.post('/auth/login/', data),
+  requestPasswordResetOTP: (data) => api.post('/auth/forgot_password_request/', data),
+  verifyPasswordResetOTP: (data) => api.post('/auth/verify_reset_otp/', data),
+  resetPassword: (data) => api.post('/auth/reset_password/', data),
   logout: () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
@@ -62,7 +65,21 @@ export const authAPI = {
 // User APIs
 export const userAPI = {
   getProfile: () => api.get('/users/profile/'),
-  updateProfile: (data) => api.patch('/users/update_profile/', data),
+  updateProfile: (data) => {
+    // Support both JSON and FormData payloads (for profile picture upload)
+    if (data instanceof FormData) {
+      return api.patch('/users/update_profile/', data);
+    }
+
+    const formData = new FormData();
+    Object.keys(data || {}).forEach((key) => {
+      const value = data[key];
+      if (value !== undefined && value !== null && value !== '') {
+        formData.append(key, value);
+      }
+    });
+    return api.patch('/users/update_profile/', formData);
+  },
   getPendingUsers: () => api.get('/users/pending/'),
   approveUser: (userId, action) => api.post(`/users/${userId}/approve/`, { action }),
   getAllUsers: () => api.get('/users/'),
@@ -97,6 +114,29 @@ export const patientAPI = {
   delete: (id) => api.delete(`/patients/${id}/`),
 };
 
+export const patientHistoryAPI = {
+  getMedicalProfiles: (params) => api.get('/patient-medical-profiles/', { params }),
+  upsertMedicalProfile: async (payload) => {
+    const list = await api.get('/patient-medical-profiles/', { params: { patient: payload.patient } });
+    const rows = list.data?.results || list.data || [];
+    if (rows.length > 0) {
+      return api.patch(`/patient-medical-profiles/${rows[0].id}/`, payload);
+    }
+    return api.post('/patient-medical-profiles/', payload);
+  },
+  getCases: (params) => api.get('/patient-cases/', { params }),
+  createCase: (data) => api.post('/patient-cases/', data),
+  updateCase: (id, data) => api.patch(`/patient-cases/${id}/`, data),
+  getEncounters: (params) => api.get('/patient-encounters/', { params }),
+  createEncounter: (data) => api.post('/patient-encounters/', data),
+  updateEncounter: (id, data) => api.patch(`/patient-encounters/${id}/`, data),
+  getAdmissions: (params) => api.get('/patient-admissions/', { params }),
+  createAdmission: (data) => api.post('/patient-admissions/', data),
+  updateAdmission: (id, data) => api.patch(`/patient-admissions/${id}/`, data),
+  dischargeAdmission: (id, discharged_on) => api.post(`/patient-admissions/${id}/discharge/`, { discharged_on }),
+  getFullHistory: (patientId) => api.get(`/patients/${patientId}/history/`),
+};
+
 // Appointment APIs
 export const appointmentAPI = {
   getAll: (params) => api.get('/appointments/', { params }),
@@ -106,6 +146,7 @@ export const appointmentAPI = {
   delete: (id) => api.delete(`/appointments/${id}/`),
   accept: (id) => api.post(`/appointments/${id}/accept/`),
   reject: (id) => api.post(`/appointments/${id}/reject/`),
+  getAvailableSlots: (params) => api.get('/appointments/available_slots/', { params }),
 };
 
 // Dashboard APIs
@@ -127,14 +168,27 @@ export const notificationAPI = {
 export const hospitalNewsAPI = {
   sendToAll: (data) => api.post('/hospital-news/', data),
   list: () => api.get('/hospital-news/list/'),
-  create: (data) => api.post('/hospital-news/create/', data),
+  create: (data) => {
+    // Support optional image upload via FormData
+    if (data instanceof FormData) {
+      return api.post('/hospital-news/create/', data);
+    }
+    const formData = new FormData();
+    Object.keys(data || {}).forEach((key) => {
+      const value = data[key];
+      if (value !== undefined && value !== null && value !== '') {
+        formData.append(key, value);
+      }
+    });
+    return api.post('/hospital-news/create/', formData);
+  },
   delete: (id) => api.delete(`/hospital-news/${id}/delete/`),
 };
 
 // Site Settings (logo, banner)
 export const siteSettingsAPI = {
   get: () => api.get('/site-settings/'),
-  getPublic: () => api.get('/site-settings/public/'),  // No auth - for login page
+  getPublic: () => api.get('/site-settings/public/'), // No auth - for login/landing pages
   update: (data) => {
     if (data instanceof FormData) {
       return api.patch('/site-settings/update/', data);
@@ -146,6 +200,17 @@ export const siteSettingsAPI = {
     });
     return api.patch('/site-settings/update/', formData);
   },
+};
+
+// Chat APIs
+export const chatAPI = {
+  searchUsers: (query) =>
+    api.get('/chat-users/', { params: { q: query || '' } }),
+  getMessages: (otherUserId) =>
+    api.get('/chat-messages/', { params: { with_user: otherUserId } }),
+  sendMessage: (receiverId, message) =>
+    api.post('/chat-messages/', { receiver_id: receiverId, message }),
+  deleteMessage: (id) => api.delete(`/chat-messages/${id}/`),
 };
 
 // Send message to specific user (email)
