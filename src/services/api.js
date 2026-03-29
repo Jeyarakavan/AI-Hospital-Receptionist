@@ -86,6 +86,7 @@ export const userAPI = {
   getById: (id) => api.get(`/users/${id}/`),
   updateUser: (id, data) => api.patch(`/users/${id}/`, data),
   deleteUser: (id) => api.delete(`/users/${id}/`),
+  updatePassword: (data) => api.patch('/users/update_profile/', data),
 };
 
 // Doctor APIs

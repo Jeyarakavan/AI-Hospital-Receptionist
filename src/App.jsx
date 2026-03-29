@@ -25,6 +25,8 @@ const Chat = lazy(() => import('./pages/Chat'));
 const News = lazy(() => import('./pages/News'));
 const Patients = lazy(() => import('./pages/Patients'));
 const PatientDetails = lazy(() => import('./pages/PatientDetails'));
+const AIChat = lazy(() => import('./pages/AIChat'));
+const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 
 const theme = createTheme({
   palette: {
@@ -200,6 +202,24 @@ export default function App() {
                 <Layout>
                   <AppLoader><PatientDetails /></AppLoader>
                 </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ai-terminal"
+            element={
+              <ProtectedRoute roles={['Admin', 'Receptionist']}>
+                <Layout>
+                  <AppLoader><AIChat /></AppLoader>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/change-password"
+            element={
+              <ProtectedRoute>
+                <AppLoader><ChangePassword /></AppLoader>
               </ProtectedRoute>
             }
           />

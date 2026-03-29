@@ -28,6 +28,12 @@ export default function ProtectedRoute({ children, roles = [] }) {
     return <Navigate to="/login" replace />;
   }
 
+  // Force password change if it's the first login
+  const isChangePasswordPage = window.location.pathname === '/change-password';
+  if (user && !user.has_changed_password && !isChangePasswordPage) {
+    return <Navigate to="/change-password" replace />;
+  }
+
   // Check role-based access
   if (roles.length > 0 && user && !roles.includes(user.role)) {
     return <Navigate to="/" replace />;

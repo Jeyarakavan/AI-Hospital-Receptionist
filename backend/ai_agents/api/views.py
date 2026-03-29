@@ -1,0 +1,111 @@
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.parsers import FormParser, MultiPartParser, JSONParser
+from django.conf import settings
+from django.http import HttpResponse
+from twilio.twiml.voice_response import VoiceResponse, Gather
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+import logging
+
+logger = logging.getLogger(__name__)
+
+from ..agents.orchestrator import OrchestratorAgent
+
+class CallHandlerView(APIView):
+    """
+    Endpoint to handle incoming calls/messages from patients.
+    Receives voice audio text (transcribed by STT) or text input.
+    """
+    
+    # Simple singleton to persist orchestrator for development
+    _orchestrator = None
+
+    @classmethod
+    def get_orchestrator(cls):
+        if cls._orchestrator is None:
+            cls._orchestrator = OrchestratorAgent()
+        return cls._orchestrator
+
+    def post(self, request):
+        user_input = request.data.get('text', '')
+        call_id = request.data.get('call_id')
+        
+        if not user_input:
+            return Response({"error": "No input provided"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        orchestrator = self.get_orchestrator()
+        try:
+            # Use the newly engineered Chat workflow
+            result = orchestrator.process_chat(user_input, call_id)
+            return Response(result, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"ChatHandler Error: {str(e)}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class TwilioVoiceWebhook(APIView):
+    """
+    Handle incoming calls from Twilio.
+    1. Greeting
+    2. Gathers speech
+    3. Sends to Orchestrator
+    4. Responds with speech
+    """
+    parser_classes = [FormParser, MultiPartParser, JSONParser]
+    _orchestrator = None
+
+    @classmethod
+    def get_orchestrator(cls):
+        if cls._orchestrator is None:
+            cls._orchestrator = OrchestratorAgent()
+        return cls._orchestrator
+
+    def post(self, request):
+        response = VoiceResponse()
+        orchestrator = self.get_orchestrator()
+        
+        # Get transcribed text from Twilio or user input
+        # Twilio sends data in form parameters
+        speech_result = request.data.get('SpeechResult', '')
+        call_sid = request.data.get('CallSid', '')
+        caller = request.data.get('From', 'unknown')
+        
+        logger.info(f"Incoming call from {caller} (Sid: {call_sid}). Speech: {speech_result}")
+        
+        if not speech_result:
+            # First time in the call: Greet and Gather
+            gather = Gather(input='speech', action='/api/ai/voice/', method='POST', timeout=3)
+            gather.say("Thank you for calling City General Hospital. I'm your AI receptionist. How can I help you today?")
+            response.append(gather)
+            
+            # If nothing is said
+            response.say("I'm sorry, I didn't hear you. Please tell me how I can assist you or stay on the line.")
+            response.redirect('/api/ai/voice/')
+        else:
+            # We have text from user speech: Process it
+            try:
+                result = orchestrator.process({
+                    "text": speech_result,
+                    "call_id": call_sid
+                })
+                ai_text = result['response_text']
+                logger.info(f"AI Response: {ai_text}")
+                
+                # Response from AI
+                response.say(ai_text)
+                
+                # Continue the conversation
+                gather = Gather(input='speech', action='/api/ai/voice/', method='POST', timeout=3)
+                response.append(gather)
+                
+                # If no more input
+                response.say("Is there anything else I can help you with?")
+                response.redirect('/api/ai/voice/')
+
+            except Exception as e:
+                logger.error(f"Error processing AI response: {str(e)}")
+                response.say("I'm sorry, I'm having a technical difficulty. Please call back in a moment or stay on the line.")
+
+        return HttpResponse(str(response), content_type='text/xml')

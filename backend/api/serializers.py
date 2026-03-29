@@ -163,7 +163,7 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'username', 'email', 'full_name', 'date_of_birth',
             'phone_number', 'address', 'profile_picture', 'profile_picture_url',
             'about_yourself', 'role', 'role_display', 'specialization',
-            'status', 'status_display', 'id_card_url',
+            'status', 'status_display', 'id_card_url', 'has_changed_password',
             'date_joined', 'updated_at'
         ]
         read_only_fields = ['id', 'date_joined', 'updated_at']

@@ -67,6 +67,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     about_yourself = models.TextField(blank=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    has_changed_password = models.BooleanField(default=False)
     
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

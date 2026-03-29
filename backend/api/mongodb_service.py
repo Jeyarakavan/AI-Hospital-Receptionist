@@ -13,17 +13,28 @@ class MongoDBService:
     
     _client = None
     _db = None
+    _broken = False
     
     @classmethod
     def get_client(cls):
         """Get MongoDB client instance"""
+        if cls._broken:
+            return None
         if cls._client is None:
             try:
-                cls._client = MongoClient(settings.MONGODB_URI)
+                # Add short timeout to prevent blocking the whole AI turn if MongoDB is dead
+                cls._client = MongoClient(
+                    settings.MONGODB_URI, 
+                    serverSelectionTimeoutMS=2000, 
+                    connectTimeoutMS=2000
+                )
+                # Test connection (optional but fast with small timeout)
+                cls._client.admin.command('ping')
                 logger.info("MongoDB connection established")
             except Exception as e:
-                logger.error(f"MongoDB connection error: {str(e)}")
-                raise
+                logger.error(f"MongoDB connection failed, disabling persistence: {str(e)}")
+                cls._broken = True
+                cls._client = None
         return cls._client
     
     @classmethod
@@ -31,6 +42,8 @@ class MongoDBService:
         """Get database instance"""
         if cls._db is None:
             client = cls.get_client()
+            if not client:
+                return None
             cls._db = client[settings.MONGODB_DB_NAME]
         return cls._db
     
@@ -39,6 +52,8 @@ class MongoDBService:
         """Save call log to MongoDB"""
         try:
             db = cls.get_database()
+            if not db:
+                return None
             collection = db['call_logs']
             
             log_entry = {
@@ -63,6 +78,8 @@ class MongoDBService:
         """Save AI interaction log to MongoDB"""
         try:
             db = cls.get_database()
+            if not db:
+                return None
             collection = db['ai_interactions']
             
             interaction = {
@@ -87,6 +104,8 @@ class MongoDBService:
         """Save notification to MongoDB"""
         try:
             db = cls.get_database()
+            if not db:
+                return None
             collection = db['notifications']
             
             notification = {
@@ -112,6 +131,8 @@ class MongoDBService:
         """Get call logs from MongoDB"""
         try:
             db = cls.get_database()
+            if not db:
+                return []
             collection = db['call_logs']
             
             query = filters or {}
@@ -125,13 +146,15 @@ class MongoDBService:
             return logs
         except Exception as e:
             logger.error(f"Error getting call logs: {str(e)}")
-            raise
-    
+            return []
+
     @classmethod
     def get_notifications(cls, user_id, limit=50, skip=0, unread_only=False):
         """Get notifications for a user"""
         try:
             db = cls.get_database()
+            if not db:
+                return []
             collection = db['notifications']
             
             query = {'user_id': str(user_id)}
@@ -147,7 +170,7 @@ class MongoDBService:
             return notifications
         except Exception as e:
             logger.error(f"Error getting notifications: {str(e)}")
-            raise
+            return []
     
     @classmethod
     def mark_notification_read(cls, notification_id, user_id):

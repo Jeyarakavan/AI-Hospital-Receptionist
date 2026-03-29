@@ -11,3 +11,10 @@ PyJWT==2.8.0
 twilio==8.10.0
 sendgrid==6.11.0
 python-dotenv==1.0.0
+anthropic
+openai
+gTTS
+openai-whisper
+torch
+torchvision
+torchaudio

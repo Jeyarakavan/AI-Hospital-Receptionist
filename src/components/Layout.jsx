@@ -34,6 +34,7 @@ import {
   NewReleases,
   AccessTime,
   Chat,
+  SmartToy,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { siteSettingsAPI } from '../services/api';
@@ -50,6 +51,7 @@ const menuItems = [
   { text: 'Users', icon: <People />, path: '/users', roles: ['Admin'] },
   { text: 'News', icon: <NewReleases />, path: '/news', roles: ['Admin', 'Doctor', 'Receptionist', 'Staff'] },
   { text: 'Call Logs', icon: <Phone />, path: '/call-logs', roles: ['Admin', 'Receptionist'] },
+  { text: 'AI Terminal', icon: <SmartToy />, path: '/ai-terminal', roles: ['Admin', 'Receptionist'] },
   { text: 'Settings', icon: <Settings />, path: '/settings', roles: ['Admin'] },
 ];
 
