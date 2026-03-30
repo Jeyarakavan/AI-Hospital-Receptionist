@@ -164,9 +164,19 @@ class UserSerializer(serializers.ModelSerializer):
             'phone_number', 'address', 'profile_picture', 'profile_picture_url',
             'about_yourself', 'role', 'role_display', 'specialization',
             'status', 'status_display', 'id_card_url', 'has_changed_password',
-            'date_joined', 'updated_at'
+            'date_joined', 'updated_at', 'password'
         ]
+        extra_kwargs = {
+            'password': {'write_only': True, 'required': False}
+        }
         read_only_fields = ['id', 'date_joined', 'updated_at']
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        if password:
+            instance.set_password(password)
+            instance.has_changed_password = True
+        return super().update(instance, validated_data)
     
     def _absolute_uri(self, file_field):
         if not file_field:

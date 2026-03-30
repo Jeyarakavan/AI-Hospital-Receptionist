@@ -334,7 +334,10 @@ class UserViewSet(viewsets.ModelViewSet):
         'doctor_profile', 'staff_profile', 'receptionist_profile'
     ).all()
     serializer_class = UserSerializer
-    permission_classes = [IsAdmin]
+    def get_permissions(self):
+        if self.action in ['profile', 'update_profile']:
+            return [permissions.IsAuthenticated()]
+        return [IsAdmin()]
     
     def perform_destroy(self, instance):
         if instance.id == self.request.user.id:
