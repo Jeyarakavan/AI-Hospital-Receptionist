@@ -12,7 +12,7 @@ import {
 } from '@mui/material';
 import { DeleteOutline, Send, Search } from '@mui/icons-material';
 import { chatAPI } from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 /* ─── Scroll helper ─── */
 const useScrollBottom = (dep) => {

@@ -15,7 +15,7 @@ import {
   LocalHospital,
   Phone,
 } from '@mui/icons-material';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { dashboardAPI } from '../services/api';
 import { toast } from 'react-toastify';
 

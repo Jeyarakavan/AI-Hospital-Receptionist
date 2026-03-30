@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import { Edit, Save, Close, CameraAlt } from '@mui/icons-material';
 import { userAPI } from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { toast } from 'react-toastify';
 
 /* ─── Gradient avatar ─── */

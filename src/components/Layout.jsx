@@ -36,7 +36,7 @@ import {
   Chat,
   SmartToy,
 } from '@mui/icons-material';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { siteSettingsAPI } from '../services/api';
 
 const drawerWidth = 260;

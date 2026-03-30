@@ -29,7 +29,7 @@ import {
 } from '@mui/material';
 import { Check, Close, Block, Email, Visibility, Edit, Delete, PersonAdd } from '@mui/icons-material';
 import { userAPI, messageAPI } from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { toast } from 'react-toastify';
 
 export default function UserManagement() {

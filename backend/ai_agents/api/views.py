@@ -19,15 +19,6 @@ class CallHandlerView(APIView):
     Receives voice audio text (transcribed by STT) or text input.
     """
     
-    # Simple singleton to persist orchestrator for development
-    _orchestrator = None
-
-    @classmethod
-    def get_orchestrator(cls):
-        if cls._orchestrator is None:
-            cls._orchestrator = OrchestratorAgent()
-        return cls._orchestrator
-
     def post(self, request):
         user_input = request.data.get('text', '')
         call_id = request.data.get('call_id')
@@ -35,7 +26,8 @@ class CallHandlerView(APIView):
         if not user_input:
             return Response({"error": "No input provided"}, status=status.HTTP_400_BAD_REQUEST)
         
-        orchestrator = self.get_orchestrator()
+        # Instantiate fresh for each call to ensure latest .env settings are used
+        orchestrator = OrchestratorAgent()
         try:
             # Use the newly engineered Chat workflow
             result = orchestrator.process_chat(user_input, call_id)
@@ -54,17 +46,10 @@ class TwilioVoiceWebhook(APIView):
     4. Responds with speech
     """
     parser_classes = [FormParser, MultiPartParser, JSONParser]
-    _orchestrator = None
-
-    @classmethod
-    def get_orchestrator(cls):
-        if cls._orchestrator is None:
-            cls._orchestrator = OrchestratorAgent()
-        return cls._orchestrator
 
     def post(self, request):
         response = VoiceResponse()
-        orchestrator = self.get_orchestrator()
+        orchestrator = OrchestratorAgent()
         
         # Get transcribed text from Twilio or user input
         # Twilio sends data in form parameters

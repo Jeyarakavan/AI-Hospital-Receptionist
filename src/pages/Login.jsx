@@ -21,7 +21,7 @@ import {
   DialogActions,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { toast } from 'react-toastify';
 import { authAPI, siteSettingsAPI } from '../services/api';
 

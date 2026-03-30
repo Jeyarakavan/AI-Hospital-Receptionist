@@ -3,7 +3,7 @@
  */
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { Box, CircularProgress } from '@mui/material';
 
 export default function ProtectedRoute({ children, roles = [] }) {

@@ -99,6 +99,7 @@ class Doctor(models.Model):
     
     class Meta:
         db_table = 'doctors'
+        ordering = ['user__full_name']
     
     def __str__(self):
         return f"Dr. {self.user.full_name} - {self.specialization}"
@@ -153,6 +154,7 @@ class DoctorAvailability(models.Model):
     class Meta:
         db_table = 'doctor_availability'
         unique_together = ['doctor', 'day_of_week', 'start_time']
+        ordering = ['day_of_week', 'start_time']
     
     def __str__(self):
         return f"{self.doctor.user.full_name} - {self.get_day_of_week_display()} {self.start_time}-{self.end_time}"

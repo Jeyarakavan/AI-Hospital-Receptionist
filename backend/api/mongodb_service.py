@@ -25,8 +25,8 @@ class MongoDBService:
                 # Add short timeout to prevent blocking the whole AI turn if MongoDB is dead
                 cls._client = MongoClient(
                     settings.MONGODB_URI, 
-                    serverSelectionTimeoutMS=2000, 
-                    connectTimeoutMS=2000
+                    serverSelectionTimeoutMS=10000, 
+                    connectTimeoutMS=10000
                 )
                 # Test connection (optional but fast with small timeout)
                 cls._client.admin.command('ping')
@@ -42,7 +42,7 @@ class MongoDBService:
         """Get database instance"""
         if cls._db is None:
             client = cls.get_client()
-            if not client:
+            if client is None:
                 return None
             cls._db = client[settings.MONGODB_DB_NAME]
         return cls._db
@@ -52,7 +52,7 @@ class MongoDBService:
         """Save call log to MongoDB"""
         try:
             db = cls.get_database()
-            if not db:
+            if db is None:
                 return None
             collection = db['call_logs']
             
@@ -78,7 +78,7 @@ class MongoDBService:
         """Save AI interaction log to MongoDB"""
         try:
             db = cls.get_database()
-            if not db:
+            if db is None:
                 return None
             collection = db['ai_interactions']
             
@@ -104,7 +104,7 @@ class MongoDBService:
         """Save notification to MongoDB"""
         try:
             db = cls.get_database()
-            if not db:
+            if db is None:
                 return None
             collection = db['notifications']
             
@@ -131,7 +131,7 @@ class MongoDBService:
         """Get call logs from MongoDB"""
         try:
             db = cls.get_database()
-            if not db:
+            if db is None:
                 return []
             collection = db['call_logs']
             
@@ -153,7 +153,7 @@ class MongoDBService:
         """Get notifications for a user"""
         try:
             db = cls.get_database()
-            if not db:
+            if db is None:
                 return []
             collection = db['notifications']
             

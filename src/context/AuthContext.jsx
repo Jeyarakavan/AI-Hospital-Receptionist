@@ -96,10 +96,9 @@ export const AuthProvider = ({ children }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-  return context;
-};
+export { AuthContext };
+
+/**
+ * useAuth hook has been moved to src/hooks/useAuth.js to maintain Vite HMR compatibility.
+ * Please import useAuth from '@/hooks/useAuth' (or relevant path) instead.
+ */

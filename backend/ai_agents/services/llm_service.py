@@ -2,6 +2,7 @@ import os
 from typing import List, Dict, Any, Optional
 import json
 from decouple import config
+# LLM Service logic - config-sensitive
 import logging
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ class LLMService:
         if self.api_key:
             self.provider = 'gemini'
             self.model = config('GEMINI_MODEL', default='gemini-1.5-flash')
+            print(f" [DEBUG] LLMService initialized with GEMINI_MODEL={self.model} and KEY={self.api_key[:10]}...")
         else:
             self.api_key = config('OPENAI_API_KEY', default='')
             if self.api_key:

@@ -19,7 +19,7 @@ import {
   Phone,
   Settings,
 } from '@mui/icons-material';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 
 export default function AIChat() {

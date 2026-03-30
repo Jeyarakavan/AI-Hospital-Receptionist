@@ -469,6 +469,24 @@ class DoctorViewSet(viewsets.ModelViewSet):
             # Non-admins can only see approved doctors
             queryset = queryset.filter(user__status='Approved')
         return queryset
+    
+    @action(detail=True, methods=['get'])
+    def slots(self, request, pk=None):
+        """Get availability for a specific doctor for next 14 days"""
+        doctor = self.get_object()
+        days = int(request.query_params.get('days', 14))
+        slot_minutes = int(request.query_params.get('slot_minutes', 30))
+        
+        availability_data = AppointmentService.get_upcoming_slots(
+            doctor, days=days, slot_minutes=slot_minutes
+        )
+        
+        return Response({
+            'doctor_id': doctor.id,
+            'doctor_name': doctor.user.full_name,
+            'specialization': doctor.specialization,
+            'availability': availability_data
+        })
 
 
 class DoctorAvailabilityViewSet(viewsets.ModelViewSet):
@@ -813,27 +831,36 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def available_slots(self, request):
         appointment_date = request.query_params.get('appointment_date')
         doctor_id = request.query_params.get('doctor')
-        if not appointment_date:
-            return Response({'error': 'appointment_date is required (YYYY-MM-DD).'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            parsed_date = datetime.strptime(appointment_date, '%Y-%m-%d').date()
-        except ValueError:
-            return Response({'error': 'Invalid date format.'}, status=status.HTTP_400_BAD_REQUEST)
-
+        days = int(request.query_params.get('days', 7))
+        
         doctors = Doctor.objects.select_related('user').filter(user__status='Approved')
         if doctor_id:
             doctors = doctors.filter(id=doctor_id)
 
         data = []
         for doctor in doctors:
-            free_slots = AppointmentService.get_available_slots(doctor, parsed_date)
-            data.append({
-                'doctor_id': doctor.id,
-                'doctor_name': doctor.user.full_name,
-                'specialization': doctor.specialization,
-                'available_slots': free_slots,
-            })
+            if appointment_date:
+                try:
+                    parsed_date = datetime.strptime(appointment_date, '%Y-%m-%d').date()
+                    free_slots = AppointmentService.get_available_slots(doctor, parsed_date)
+                    data.append({
+                        'doctor_id': doctor.id,
+                        'doctor_name': doctor.user.full_name,
+                        'specialization': doctor.specialization,
+                        'date': appointment_date,
+                        'available_slots': free_slots,
+                    })
+                except ValueError:
+                    return Response({'error': 'Invalid date format (YYYY-MM-DD).'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                # Range calculation
+                availability_data = AppointmentService.get_upcoming_slots(doctor, days=days)
+                data.append({
+                    'doctor_id': doctor.id,
+                    'doctor_name': doctor.user.full_name,
+                    'specialization': doctor.specialization,
+                    'availability': availability_data,
+                })
         return Response(data)
 
 

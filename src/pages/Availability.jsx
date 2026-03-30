@@ -24,7 +24,7 @@ import {
 import { Edit, Delete } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { availabilityAPI, doctorAPI } from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { toast } from 'react-toastify';
 
 const DAYS_OF_WEEK = [

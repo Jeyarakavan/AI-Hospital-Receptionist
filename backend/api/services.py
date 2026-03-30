@@ -263,14 +263,41 @@ class AppointmentService:
 
         free_slots = []
         for window in windows:
-            current = datetime.combine(appointment_date, window.start_time)
-            end = datetime.combine(appointment_date, window.end_time)
-            while current <= end:
-                current_time = current.time().replace(microsecond=0)
-                if current_time not in booked_times:
-                    free_slots.append(current_time.strftime('%H:%M:%S'))
-                current += timedelta(minutes=slot_minutes)
+            # We use a datetime combine to iterate
+            current_dt = datetime.combine(appointment_date, window.start_time)
+            end_dt = datetime.combine(appointment_date, window.end_time)
+            
+            # Start time must be >= now if appointment_date is today
+            if appointment_date == timezone.now().date():
+                now_time = timezone.now().time()
+                if current_dt.time() < now_time:
+                    # Move current_dt to next available slot after current time
+                    while current_dt.time() < now_time and current_dt < end_dt:
+                        current_dt += timedelta(minutes=slot_minutes)
+
+            while current_dt < end_dt:
+                slot_time = current_dt.time().replace(microsecond=0)
+                if slot_time not in booked_times:
+                    free_slots.append(slot_time.strftime('%H:%M:%S'))
+                current_dt += timedelta(minutes=slot_minutes)
         return free_slots
+    
+    @staticmethod
+    def get_upcoming_slots(doctor, days=7, slot_minutes=30):
+        """Calculate next X days of available slots for a doctor."""
+        results = []
+        today = timezone.now().date()
+        
+        for i in range(days):
+            date = today + timedelta(days=i)
+            slots = AppointmentService.get_available_slots(doctor, date, slot_minutes)
+            if slots:
+                results.append({
+                    'date': date.strftime('%Y-%m-%d'),
+                    'day_name': date.strftime('%A'),
+                    'slots': slots
+                })
+        return results
     
     @staticmethod
     def accept_appointment(appointment):
