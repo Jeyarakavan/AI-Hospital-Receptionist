@@ -17,6 +17,7 @@ import {
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { authAPI, siteSettingsAPI } from '../services/api';
 import { toast } from 'react-toastify';
+import { DOCTOR_CATEGORIES } from '../constants/doctorTypes';
 
 /* ─── Floating particles (same as Login) ─── */
 const Particles = () => (
@@ -130,7 +131,7 @@ export default function Signup() {
   const [isExiting, setIsExiting] = useState(false);
   const [formData, setFormData] = useState({
     username: '', email: '', password: '', confirm_password: '',
-    full_name: '', date_of_birth: '', phone_number: '', address: '',
+    full_name: '', date_of_birth: '', phone_number: '', nic_number: '', address: '',
     about_yourself: '', role: '', specialization: '',
   });
   const [profilePicture, setProfilePicture] = useState(null);
@@ -186,10 +187,11 @@ export default function Signup() {
       [!formData.date_of_birth, 'Date of Birth is required'],
       [!formData.email?.trim(), 'Email is required'],
       [!formData.phone_number?.trim(), 'Phone Number is required'],
+      [!formData.nic_number?.trim(), 'NIC Number is required'],
       [!formData.address?.trim(), 'Address is required'],
       [!formData.username?.trim(), 'Username is required'],
       [!formData.role, 'Please select a role'],
-      [formData.role === 'Doctor' && !formData.specialization?.trim(), 'Specialization is required for Doctors'],
+      [formData.role === 'Doctor' && !formData.specialization?.trim(), 'Doctor Type is required for Doctors'],
       [!formData.password || !formData.confirm_password, 'Password and Confirm Password are required'],
       [formData.password !== formData.confirm_password, 'Passwords do not match'],
       [formData.password.length < 6, 'Password must be at least 6 characters'],
@@ -201,7 +203,7 @@ export default function Signup() {
 
     const data = new FormData();
     ['username','email','password','confirm_password','full_name','date_of_birth',
-     'phone_number','address','role'].forEach(k => data.append(k, formData[k]));
+     'phone_number','nic_number','address','role'].forEach(k => data.append(k, formData[k]));
     if (formData.about_yourself) data.append('about_yourself', formData.about_yourself);
     if (profilePicture) data.append('profile_picture', profilePicture);
     if (formData.role === 'Doctor') {
@@ -243,8 +245,41 @@ export default function Signup() {
     if (formData.role === 'Doctor') return (
       <>
         <Grid item xs={12}>
-          <TextField fullWidth label="Specialization" name="specialization"
-            value={formData.specialization} onChange={handleChange} required sx={glassField} />
+          <TextField
+            fullWidth
+            select
+            label="Doctor Type"
+            name="specialization"
+            value={formData.specialization}
+            onChange={handleChange}
+            required
+            sx={glassField}
+            SelectProps={{
+              MenuProps: {
+                PaperProps: {
+                  sx: {
+                    background: '#0d1f3c', border: '1px solid rgba(99,179,237,0.2)',
+                    borderRadius: '12px', mt: 0.5,
+                    '& .MuiMenuItem-root': { color: '#f1f5f9', fontSize: '0.875rem', borderRadius: '8px', mx: 0.5,
+                      '&:hover': { background: 'rgba(99,179,237,0.12)' },
+                      '&.Mui-selected': { background: 'rgba(99,179,237,0.18)' },
+                    },
+                  },
+                },
+              },
+            }}
+          >
+            {Object.entries(DOCTOR_CATEGORIES).map(([category, types]) => [
+              <MenuItem key={category} disabled sx={{ opacity: '1 !important', fontWeight: 800, color: '#38bdf8', bgcolor: 'rgba(56,189,248,0.05)' }}>
+                {category}
+              </MenuItem>,
+              ...types.map(type => (
+                <MenuItem key={type} value={type} sx={{ pl: 4 }}>
+                  {type}
+                </MenuItem>
+              ))
+            ])}
+          </TextField>
         </Grid>
         <Grid item xs={12}>
           <FileUploadBtn label="Upload Doctor ID Card" file={idCard}
@@ -362,6 +397,10 @@ export default function Signup() {
             <Grid item xs={12} md={6}>
               <TextField fullWidth label="Phone Number" name="phone_number"
                 value={formData.phone_number} onChange={handleChange} required sx={glassField} />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField fullWidth label="NIC Number" name="nic_number"
+                value={formData.nic_number} onChange={handleChange} required sx={glassField} />
             </Grid>
             <Grid item xs={12}>
               <TextField fullWidth label="Address" name="address" multiline rows={2}

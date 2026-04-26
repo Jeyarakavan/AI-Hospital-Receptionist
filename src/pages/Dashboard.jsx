@@ -43,10 +43,10 @@ const AnimatedNumber = ({ value }) => {
 const StatCard = ({ title, value, icon, gradient, delay = 0 }) => (
   <Box sx={{
     borderRadius: '20px',
-    background: 'rgba(255,255,255,0.042)',
-    border: '1px solid rgba(255,255,255,0.09)',
+    background: 'rgba(255,255,255,0.82)',
+    border: '1px solid rgba(11,18,32,0.08)',
     backdropFilter: 'blur(16px)',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.28)',
+    boxShadow: '0 10px 30px rgba(11,18,32,0.08)',
     overflow: 'hidden',
     position: 'relative',
     transition: 'transform 0.25s ease, box-shadow 0.25s ease',
@@ -87,7 +87,7 @@ const StatCard = ({ title, value, icon, gradient, delay = 0 }) => (
         background: gradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
         <AnimatedNumber value={value} />
       </Typography>
-      <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.42)', fontWeight: 500, letterSpacing: '0.04em' }}>
+      <Typography sx={{ fontSize: '0.8rem', color: 'rgba(11,18,32,0.62)', fontWeight: 600, letterSpacing: '0.04em' }}>
         {title}
       </Typography>
     </Box>
@@ -97,8 +97,8 @@ const StatCard = ({ title, value, icon, gradient, delay = 0 }) => (
 /* ─── Section header ─── */
 const SectionHeader = ({ title }) => (
   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
-    <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: '#e2e8f0' }}>{title}</Typography>
-    <Box sx={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+    <Typography sx={{ fontSize: '0.95rem', fontWeight: 800, color: '#0b1220' }}>{title}</Typography>
+    <Box sx={{ flex: 1, height: '1px', background: 'rgba(11,18,32,0.10)' }} />
   </Box>
 );
 
@@ -147,7 +147,7 @@ export default function Dashboard() {
   return (
     <Box sx={{
       minHeight: 'calc(100vh - 96px)',
-      background: 'linear-gradient(135deg, #0a0f1e 0%, #0d1f3c 50%, #071422 100%)',
+      background: 'linear-gradient(135deg, #f8fafc 0%, #e6f0ff 45%, #ffffff 100%)',
       position: 'relative', overflow: 'hidden',
       fontFamily: "'Sora', 'Nunito', sans-serif",
     }}>
@@ -166,7 +166,7 @@ export default function Dashboard() {
             <Typography sx={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', mb: 0.5 }}>
               {greeting} 👋
             </Typography>
-            <Typography sx={{ fontSize: '2rem', fontWeight: 800, color: '#f1f5f9', lineHeight: 1.15 }}>
+            <Typography sx={{ fontSize: '2rem', fontWeight: 900, color: '#0b1220', lineHeight: 1.15 }}>
               {user?.full_name || 'Dashboard'}
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.8 }}>
@@ -174,7 +174,7 @@ export default function Dashboard() {
                 animation: 'pulse 2s ease-in-out infinite', '@keyframes pulse': {
                   '0%,100%': { opacity: 1 }, '50%': { opacity: 0.4 }
                 }}} />
-              <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.38)' }}>
+              <Typography sx={{ fontSize: '0.8rem', color: 'rgba(11,18,32,0.55)' }}>
                 Live hospital activity · {now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
               </Typography>
             </Box>
@@ -252,10 +252,10 @@ export default function Dashboard() {
             <Grid item xs={12} md={7}>
               <Box sx={{
                 borderRadius: '20px', p: 3,
-                background: 'rgba(255,255,255,0.038)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.85)',
+                border: '1px solid rgba(11,18,32,0.08)',
                 backdropFilter: 'blur(16px)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+                boxShadow: '0 10px 30px rgba(11,18,32,0.08)',
                 animation: 'cardIn 0.6s ease 0.3s both',
               }}>
                 <SectionHeader title="📞 Recent Call Logs" />
@@ -268,26 +268,26 @@ export default function Dashboard() {
                     <Box key={index} sx={{
                       display: 'flex', alignItems: 'center', gap: 2,
                       p: 2, mb: 1.5, borderRadius: '12px',
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.07)',
+                      background: 'rgba(11,77,187,0.035)',
+                      border: '1px solid rgba(11,18,32,0.08)',
                       transition: 'background 0.2s',
                       animation: `fadeRow 0.4s ease ${index * 0.06}s both`,
                       '@keyframes fadeRow': { from: { opacity: 0, transform: 'translateX(-10px)' }, to: { opacity: 1, transform: 'none' } },
-                      '&:hover': { background: 'rgba(99,179,237,0.07)' },
+                      '&:hover': { background: 'rgba(11,77,187,0.06)' },
                     }}>
                       <Box sx={{ width: 36, height: 36, borderRadius: '10px', background: GRADIENTS.teal,
                         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <Phone sx={{ fontSize: 16, color: '#fff' }} />
                       </Box>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography sx={{ fontSize: '0.82rem', color: '#e2e8f0', fontWeight: 600 }}>
+                        <Typography sx={{ fontSize: '0.82rem', color: '#0b1220', fontWeight: 800 }}>
                           {call.caller_number}
                         </Typography>
-                        <Typography sx={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.38)', mt: 0.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <Typography sx={{ fontSize: '0.75rem', color: 'rgba(11,18,32,0.55)', mt: 0.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {call.intent}
                         </Typography>
                       </Box>
-                      <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      <Typography sx={{ fontSize: '0.7rem', color: 'rgba(11,18,32,0.45)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                         {new Date(call.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </Typography>
                     </Box>
@@ -301,9 +301,9 @@ export default function Dashboard() {
               <Box sx={{
                 borderRadius: '20px', p: 3, height: '100%',
                 background: 'linear-gradient(145deg, rgba(56,189,248,0.07) 0%, rgba(129,140,248,0.07) 100%)',
-                border: '1px solid rgba(99,179,237,0.15)',
+                border: '1px solid rgba(11,18,32,0.08)',
                 backdropFilter: 'blur(16px)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                boxShadow: '0 10px 30px rgba(11,18,32,0.08)',
                 animation: 'cardIn 0.6s ease 0.38s both',
                 display: 'flex', flexDirection: 'column', justifyContent: 'center',
               }}>
@@ -315,9 +315,9 @@ export default function Dashboard() {
                 ].map((item, i) => (
                   <Box key={i} sx={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    py: 1.5, borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                    py: 1.5, borderBottom: i < 2 ? '1px solid rgba(11,18,32,0.08)' : 'none',
                   }}>
-                    <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)' }}>{item.label}</Typography>
+                    <Typography sx={{ fontSize: '0.8rem', color: 'rgba(11,18,32,0.58)', fontWeight: 700 }}>{item.label}</Typography>
                     <Typography sx={{ fontSize: item.isText ? '0.78rem' : '1.1rem', fontWeight: 700, color: item.color,
                       maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right' }}>
                       {item.isText ? item.value : <AnimatedNumber value={item.value} />}

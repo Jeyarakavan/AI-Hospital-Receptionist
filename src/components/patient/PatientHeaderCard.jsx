@@ -14,7 +14,7 @@ export default function PatientHeaderCard({ patient, profile }) {
           <Grid item xs={12} md={6}>
             <Stack direction="row" spacing={1} justifyContent={{ xs: 'flex-start', md: 'flex-end' }}>
               <Chip label={`Age: ${patient?.age ?? '-'}`} />
-              <Chip label={`IC: ${profile?.ic_number || '-'}`} color="primary" variant="outlined" />
+              <Chip label={`NIC: ${patient?.nic_number || profile?.ic_number || '-'}`} color="primary" variant="outlined" />
             </Stack>
             <Typography sx={{ mt: 1 }} color="text.secondary">
               {patient?.address || 'No address'}

@@ -71,7 +71,7 @@ class OrchestratorAgent(BaseAgent):
     # Main entry point
     # ------------------------------------------------------------------
 
-    def process_chat(self, user_input: str, call_id: str) -> Dict[str, Any]:
+    def process_chat(self, user_input: str, call_id: str, user_id: str = None) -> Dict[str, Any]:
         # 1. Ensure session
         self.memory.start_session(call_id)
         history = self.memory.get_history(call_id)
@@ -93,7 +93,7 @@ class OrchestratorAgent(BaseAgent):
         if intent == "emergency" or is_urgent:
             result     = self.triage.process({"user_input": user_input, "chat_history": history})
             final_text = result.get("response", "Please call 119 immediately.")
-            return self._finalise(call_id, user_input, final_text, intent)
+            return self._finalise(call_id, user_input, final_text, intent, user_id=user_id)
 
         # 4. If a multi-step flow is already in progress, advance it
         if self.flow_agent.is_flow_active(call_id):
@@ -112,19 +112,19 @@ class OrchestratorAgent(BaseAgent):
                     "notify_data":   {"appointment_id": result["appointment_id"]},
                 })
 
-            return self._finalise(call_id, user_input, final_text, intent)
+            return self._finalise(call_id, user_input, final_text, intent, user_id=user_id)
 
         # 5. Start a new guided flow if the intent requires one
         if intent in self.FLOW_INTENTS:
             flow_name = self.FLOW_INTENTS[intent]
             result    = self.flow_agent.start_flow(call_id, flow_name)
             final_text = result.get("response", "")
-            return self._finalise(call_id, user_input, final_text, intent)
+            return self._finalise(call_id, user_input, final_text, intent, user_id=user_id)
 
         # 6. Single-turn specialist routing
         final_text = self._route_single_turn(intent, user_input, history)
 
-        return self._finalise(call_id, user_input, final_text, intent)
+        return self._finalise(call_id, user_input, final_text, intent, user_id=user_id)
 
     # ------------------------------------------------------------------
     # Single-turn routing (no persistent state needed)
@@ -201,13 +201,13 @@ class OrchestratorAgent(BaseAgent):
     # ------------------------------------------------------------------
 
     def _finalise(self, call_id: str, user_input: str,
-                  final_text: str, intent: str) -> Dict[str, Any]:
+                  final_text: str, intent: str, user_id: str = None) -> Dict[str, Any]:
         if not final_text:
             final_text = "I'm here to help — could you tell me a bit more about what you need?"
 
         # Persist to memory
-        self.memory.add_to_history(call_id, "user", user_input, intent)
-        self.memory.add_to_history(call_id, "ai",   final_text, intent)
+        self.memory.add_to_history(call_id, "user", user_input, intent, user_id=user_id)
+        self.memory.add_to_history(call_id, "ai",   final_text, intent, user_id=user_id)
 
         # Log to MongoDB
         self.notifier.process({

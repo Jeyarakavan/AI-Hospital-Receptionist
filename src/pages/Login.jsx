@@ -220,21 +220,48 @@ export default function Login() {
           borderRight: { md: '1px solid rgba(255,255,255,0.06)' },
         }}>
 
-          {/* Logo */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 5 }}>
-            {siteSettings.logo_url
-              ? <Box component="img" src={siteSettings.logo_url} alt="Logo"
-                  sx={{ width: 44, height: 44, objectFit: 'contain', borderRadius: 2 }} />
-              : <HealthCross />
-            }
-            <Typography sx={{
-              fontSize: '1.3rem', fontWeight: 800, letterSpacing: '-0.3px',
-              background: 'linear-gradient(90deg,#e2e8f0,#94a3b8)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            }}>
-              {siteSettings.site_name || 'WeHealth'}
-            </Typography>
+          {/* Logo + Back button */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              {siteSettings.logo_url
+                ? <Box component="img" src={siteSettings.logo_url} alt="Logo"
+                    sx={{ width: 44, height: 44, objectFit: 'contain', borderRadius: 2 }} />
+                : <HealthCross />
+              }
+              <Typography sx={{
+                fontSize: '1.3rem', fontWeight: 800, letterSpacing: '-0.3px',
+                background: 'linear-gradient(90deg,#e2e8f0,#94a3b8)',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              }}>
+                {siteSettings.site_name || 'WeHealth'}
+              </Typography>
+            </Box>
+
+            {/* ← Back to Home button */}
+            <Box
+              id="login-back-btn"
+              component="button"
+              type="button"
+              onClick={() => navigate('/')}
+              sx={{
+                display: 'flex', alignItems: 'center', gap: 0.8,
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '10px', px: 1.8, py: 0.8,
+                color: 'rgba(255,255,255,0.5)', fontSize: '0.78rem', fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'inherit',
+                transition: 'all 0.2s',
+                '&:hover': {
+                  background: 'rgba(99,179,237,0.1)',
+                  borderColor: 'rgba(99,179,237,0.3)',
+                  color: '#63b3ed',
+                },
+              }}
+            >
+              ← Home
+            </Box>
           </Box>
+
 
           {/* Headline */}
           <Typography sx={{ fontSize: '2rem', fontWeight: 800, color: '#f1f5f9', lineHeight: 1.15, mb: 0.5 }}>

@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import FormParser, MultiPartParser, JSONParser
 from django.conf import settings
 from django.http import HttpResponse
@@ -12,6 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from ..agents.orchestrator import OrchestratorAgent
+from api.mongodb_service import MongoDBService
 
 class CallHandlerView(APIView):
     """
@@ -30,11 +32,33 @@ class CallHandlerView(APIView):
         orchestrator = OrchestratorAgent()
         try:
             # Use the newly engineered Chat workflow
-            result = orchestrator.process_chat(user_input, call_id)
+            user_id = str(request.user.id) if getattr(request, 'user', None) and request.user.is_authenticated else None
+            result = orchestrator.process_chat(user_input, call_id, user_id=user_id)
             return Response(result, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"ChatHandler Error: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AIChatHistoryView(APIView):
+    """
+    Fetch persisted AI chat history for the authenticated user.
+    Optional filter by call_id for one conversation thread.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        call_id = request.query_params.get('call_id')
+        limit = int(request.query_params.get('limit', 200))
+        skip = int(request.query_params.get('skip', 0))
+
+        rows = MongoDBService.get_ai_interactions(
+            user_id=str(request.user.id),
+            call_id=call_id,
+            limit=limit,
+            skip=skip,
+        )
+        return Response({'history': rows}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class TwilioVoiceWebhook(APIView):

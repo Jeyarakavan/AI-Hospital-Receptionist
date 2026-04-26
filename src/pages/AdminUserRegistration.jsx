@@ -20,6 +20,7 @@ import {
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { authAPI } from '../services/api';
 import { toast } from 'react-toastify';
+import { DOCTOR_CATEGORIES } from '../constants/doctorTypes';
 
 export default function AdminUserRegistration() {
   const [formData, setFormData] = useState({
@@ -30,6 +31,7 @@ export default function AdminUserRegistration() {
     full_name: '',
     date_of_birth: '',
     phone_number: '',
+    nic_number: '',
     address: '',
     about_yourself: '',
     role: 'Doctor',
@@ -111,6 +113,11 @@ export default function AdminUserRegistration() {
       setLoading(false);
       return;
     }
+    if (!formData.nic_number?.trim()) {
+      toast.error('NIC Number is required');
+      setLoading(false);
+      return;
+    }
     if (!formData.address?.trim()) {
       toast.error('Address is required');
       setLoading(false);
@@ -129,7 +136,7 @@ export default function AdminUserRegistration() {
 
     // Validate role-specific required fields
     if (formData.role === 'Doctor' && !formData.specialization?.trim()) {
-      toast.error('Specialization is required for Doctors');
+      toast.error('Doctor Type is required for Doctors');
       setLoading(false);
       return;
     }
@@ -163,6 +170,7 @@ export default function AdminUserRegistration() {
     data.append('full_name', formData.full_name);
     data.append('date_of_birth', formData.date_of_birth);
     data.append('phone_number', formData.phone_number);
+    data.append('nic_number', formData.nic_number);
     data.append('address', formData.address);
     data.append('role', formData.role);
     
@@ -211,6 +219,7 @@ export default function AdminUserRegistration() {
         full_name: '',
         date_of_birth: '',
         phone_number: '',
+        nic_number: '',
         address: '',
         about_yourself: '',
         role: 'Doctor',
@@ -279,12 +288,24 @@ export default function AdminUserRegistration() {
           <Grid item xs={12}>
             <TextField
               fullWidth
-              label="Specialization"
+              select
+              label="Doctor Type"
               name="specialization"
               value={formData.specialization}
               onChange={handleChange}
               required
-            />
+            >
+              {Object.entries(DOCTOR_CATEGORIES).map(([category, types]) => [
+                <MenuItem key={category} disabled sx={{ opacity: '1 !important', fontWeight: 800, color: '#0ea5a4', bgcolor: 'rgba(14,165,164,0.05)' }}>
+                  {category}
+                </MenuItem>,
+                ...types.map(type => (
+                  <MenuItem key={type} value={type} sx={{ pl: 4 }}>
+                    {type}
+                  </MenuItem>
+                ))
+              ])}
+            </TextField>
           </Grid>
           <Grid item xs={12}>
             <Button
@@ -419,6 +440,16 @@ export default function AdminUserRegistration() {
                 label="Phone Number"
                 name="phone_number"
                 value={formData.phone_number}
+                onChange={handleChange}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="NIC Number"
+                name="nic_number"
+                value={formData.nic_number}
                 onChange={handleChange}
                 required
               />

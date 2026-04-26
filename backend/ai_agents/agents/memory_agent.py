@@ -70,7 +70,7 @@ class MemoryAgent(BaseAgent):
         return cid
 
     def add_to_history(self, call_id: str, role: str, message: str,
-                       intent: str = "unknown"):
+                       intent: str = "unknown", user_id: Optional[str] = None):
         """Append a turn to the session's history and persist to Mongo."""
         self._ensure_session(call_id)
 
@@ -84,7 +84,7 @@ class MemoryAgent(BaseAgent):
         if self._mongo:
             try:
                 self._mongo.save_ai_interaction(
-                    user_id=None,
+                    user_id=user_id,
                     interaction_type="chat",
                     input_data=message if role == "user" else "",
                     output_data=message if role == "ai" else "",
