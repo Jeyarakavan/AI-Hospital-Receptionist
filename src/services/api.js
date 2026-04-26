@@ -147,6 +147,8 @@ export const appointmentAPI = {
   delete: (id) => api.delete(`/appointments/${id}/`),
   accept: (id) => api.post(`/appointments/${id}/accept/`),
   reject: (id) => api.post(`/appointments/${id}/reject/`),
+  getPatientLink: (id) => api.get(`/appointments/${id}/patient_link/`),
+  updateCondition: (id, data) => api.post(`/appointments/${id}/update_condition/`, data),
   getAvailableSlots: (params) => api.get('/appointments/available_slots/', { params }),
 };
 

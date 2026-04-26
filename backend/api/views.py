@@ -505,7 +505,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     queryset = Patient.objects.select_related('medical_profile').all()
     serializer_class = PatientSerializer
     permission_classes = [permissions.IsAuthenticated]
-    search_fields = ['name', 'phone_number', 'email']
+    search_fields = ['name', 'phone_number', 'email', 'nic_number']
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -614,11 +614,68 @@ class PatientEncounterViewSet(viewsets.ModelViewSet):
         ):
             raise PermissionDenied('Only assigned doctor can add encounters.')
         doctor_profile = getattr(user, 'doctor_profile', None)
-        serializer.save(
+        encounter = serializer.save(
             created_by=user,
             updated_by=user,
             doctor=serializer.validated_data.get('doctor') or doctor_profile,
         )
+
+        # Send patient medical update email (non-blocking)
+        try:
+            patient = encounter.patient_case.patient
+            to_email = getattr(patient, "email", None)
+            if to_email:
+                meds = []
+                for p in encounter.prescriptions.all():
+                    line = p.medicine_name
+                    if p.dosage:
+                        line += f" — {p.dosage}"
+                    if p.frequency:
+                        line += f" — {p.frequency}"
+                    if p.duration:
+                        line += f" — {p.duration}"
+                    meds.append(line)
+
+                subject = "Your Medical Visit Update"
+                plain = (
+                    f"Hello {patient.name},\n\n"
+                    f"Your visit record was updated by Dr. {encounter.doctor.user.full_name if encounter.doctor else user.full_name}.\n\n"
+                    f"Notes: {encounter.notes}\n"
+                    f"Current situation: {encounter.current_situation}\n"
+                    f"Follow-up plan: {encounter.follow_up_plan}\n"
+                    f"Next checkup date: {encounter.next_checkup_date or 'N/A'}\n"
+                    f"Medicines: {', '.join(meds) if meds else 'None'}\n\n"
+                    "Please contact the hospital if you have questions."
+                )
+                html = NotificationService._render_transactional_html(
+                    title="Medical Record Updated",
+                    intro="Your doctor has added/updated your medical visit record:",
+                    lines=[
+                        f"Doctor: Dr. {encounter.doctor.user.full_name if encounter.doctor else user.full_name}",
+                        f"Encounter date: {encounter.encounter_date}",
+                        f"Notes: {encounter.notes or '—'}",
+                        f"Current situation: {encounter.current_situation or '—'}",
+                        f"Follow-up plan: {encounter.follow_up_plan or '—'}",
+                        f"Next checkup: {encounter.next_checkup_date or '—'}",
+                        "Medicines: " + ("; ".join(meds) if meds else "—"),
+                    ],
+                    footer_note="This email is a copy of your medical record update from the hospital system.",
+                )
+                NotificationService.send_email(to_email=to_email, subject=subject, message=plain, html_content=html)
+
+                try:
+                    MongoDBService.save_notification(
+                        user_id=None,
+                        notification_type='patient_medical_update',
+                        title='Medical Record Updated',
+                        message=f"Medical record updated for {patient.name}.",
+                        metadata={'email': to_email, 'patient_id': str(patient.id), 'patient_case_id': str(encounter.patient_case_id)},
+                    )
+                except Exception:
+                    pass
+        except Exception as e:
+            import logging
+            logging.error(f"PatientEncounter email notify failed: {e}")
 
     def perform_update(self, serializer):
         user = self.request.user
@@ -692,7 +749,9 @@ def patient_full_history(request, patient_id):
         'medical_profile': PatientMedicalProfileSerializer(getattr(patient, 'medical_profile', None)).data if hasattr(patient, 'medical_profile') else None,
         'cases': PatientCaseSerializer(cases, many=True).data,
     }
-    return Response(PatientHistorySerializer(data).data)
+    # NOTE: `data` is already serialized. Wrapping it again inside a Serializer that expects
+    # model instances can crash (e.g., UUID objects without `.pk`). Return directly.
+    return Response(data)
 
 
 class AppointmentViewSet(viewsets.ModelViewSet):
@@ -829,6 +888,114 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             AppointmentSerializer(appointment).data,
             status=status.HTTP_200_OK
         )
+
+    @action(detail=True, methods=['get', 'post'])
+    def patient_link(self, request, pk=None):
+        """
+        Returns (and if needed, creates) the Patient + active PatientCase for this appointment.
+        Used by Doctor "My Patients" UI to open medical record directly.
+        """
+        appointment = self.get_object()
+
+        # Doctor can only link their own appointment
+        if request.user.role == 'Doctor' and appointment.doctor.user != request.user:
+            return Response({'error': 'You do not have permission to access this appointment'}, status=status.HTTP_403_FORBIDDEN)
+
+        patient, patient_case = AppointmentService.ensure_patient_and_case_from_appointment(appointment)
+        if not patient or not patient_case:
+            return Response({'error': 'Failed to link patient profile for this appointment'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({
+            'appointment_id': str(appointment.id),
+            'patient_id': str(patient.id),
+            'patient_case_id': str(patient_case.id),
+        })
+
+    @action(detail=True, methods=['post'])
+    def update_condition(self, request, pk=None):
+        """
+        Update patient current condition for confirmed appointments with follow-up gating.
+        If a next_checkup_date exists on active case, condition changes are allowed
+        only on/after that date.
+        """
+        appointment = self.get_object()
+
+        if appointment.status != 'Confirmed':
+            return Response({'error': 'Condition can be updated only for confirmed appointments.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        can_update = (
+            request.user.role in ['Admin', 'Receptionist'] or
+            (request.user.role == 'Doctor' and appointment.doctor.user == request.user)
+        )
+        if not can_update:
+            return Response({'error': 'You do not have permission to update condition.'}, status=status.HTTP_403_FORBIDDEN)
+
+        patient, patient_case = AppointmentService.ensure_patient_and_case_from_appointment(appointment)
+        if not patient_case:
+            return Response({'error': 'Unable to resolve patient case for this appointment.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        today = timezone.now().date()
+        if patient_case.next_checkup_date and today < patient_case.next_checkup_date:
+            return Response(
+                {'error': f'Condition can be updated on or after {patient_case.next_checkup_date}.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        remark = (request.data.get('remark') or '').strip().lower()
+        current_condition = (request.data.get('current_condition') or '').strip()
+        next_checkup_date = request.data.get('next_checkup_date')
+
+        if remark not in ['cured', 'not_come_clinic', 'in_treatment']:
+            return Response({'error': 'Invalid remark. Use cured, not_come_clinic, or in_treatment.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if next_checkup_date:
+            try:
+                parsed = datetime.strptime(next_checkup_date, '%Y-%m-%d').date()
+                patient_case.next_checkup_date = parsed
+            except ValueError:
+                return Response({'error': 'Invalid next_checkup_date. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if remark == 'cured':
+            patient_case.status = 'Closed'
+            patient_case.is_active = False
+            patient_case.current_condition = current_condition or 'Cured'
+        elif remark == 'not_come_clinic':
+            patient_case.status = 'UnderObservation'
+            patient_case.is_active = True
+            patient_case.current_condition = current_condition or 'Did not come for clinic'
+        else:
+            patient_case.status = 'UnderObservation'
+            patient_case.is_active = True
+            patient_case.current_condition = current_condition or 'In Treatment'
+
+        patient_case.updated_by = request.user
+        patient_case.save()
+
+        # Best effort patient email
+        try:
+            to_email = getattr(patient, 'email', None)
+            if to_email:
+                NotificationService.send_email(
+                    to_email=to_email,
+                    subject='Patient Condition Updated',
+                    message=(
+                        f"Your condition update: {patient_case.current_condition}\n"
+                        f"Remark: {remark.replace('_', ' ')}\n"
+                        f"Next Checkup Date: {patient_case.next_checkup_date or 'N/A'}"
+                    ),
+                )
+        except Exception:
+            pass
+
+        return Response({
+            'appointment_id': str(appointment.id),
+            'patient_id': str(patient.id) if patient else None,
+            'patient_case_id': str(patient_case.id),
+            'status': patient_case.status,
+            'is_active': patient_case.is_active,
+            'current_condition': patient_case.current_condition,
+            'next_checkup_date': patient_case.next_checkup_date,
+        })
 
     @action(detail=False, methods=['get'])
     def available_slots(self, request):
@@ -978,12 +1145,12 @@ def call_logs(request):
     
     try:
         logs = MongoDBService.get_call_logs(limit=limit, skip=skip)
-        return Response({'logs': logs})
+        return Response({'logs': logs or []})
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        # Mongo issues must never break UI; return empty list.
+        import logging
+        logging.error(f"call_logs MongoDB failure: {str(e)}")
+        return Response({'logs': []})
 
 
 @api_view(['GET'])
@@ -1007,6 +1174,59 @@ def notifications(request):
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated, IsAdminOrReceptionist])
+def notification_history(request):
+    """
+    Get full notification history for Admin/Receptionist dashboard.
+    Combines MongoDB notification logs + PostgreSQL appointment records.
+    """
+    result = []
+
+    # 1. Try MongoDB for notification logs
+    try:
+        mongo_notifications = MongoDBService.get_all_notifications(limit=200) or []
+        for n in mongo_notifications:
+            n['_id'] = str(n.get('_id', ''))
+            if 'timestamp' not in n and 'created_at' in n:
+                n['timestamp'] = str(n['created_at'])
+            result.append(n)
+    except Exception:
+        pass
+
+    # 2. Supplement with PostgreSQL appointment data (always reliable)
+    try:
+        appointments = Appointment.objects.select_related('doctor__user').order_by('-booking_time')[:100]
+        for appt in appointments:
+            result.append({
+                '_id': str(appt.id),
+                'notification_type': 'appointment_booking',
+                'title': f'Appointment: {appt.patient_name}',
+                'message': (
+                    f'Dr. {appt.doctor.user.full_name} — '
+                    f'{appt.appointment_date} at {str(appt.appointment_time)[:5]} — '
+                    f'Status: {appt.status}'
+                ),
+                'user_email': appt.patient_email or '',
+                'timestamp': appt.booking_time.isoformat() if appt.booking_time else None,
+                'status': appt.status.lower(),
+                'purpose': 'appointment booking',
+                'receiver_email': appt.patient_email or '',
+                'doctor_email': appt.doctor.user.email or '',
+            })
+    except Exception:
+        pass
+
+    # Sort all by timestamp desc
+    def sort_key(n):
+        ts = n.get('timestamp') or ''
+        return ts
+    result.sort(key=sort_key, reverse=True)
+
+    return Response(result[:300])
+
 
 
 @api_view(['GET'])

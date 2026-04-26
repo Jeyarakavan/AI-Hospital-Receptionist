@@ -1,5 +1,9 @@
 /**
  * Appointments Management Page - Enhanced UI
+ * - Filter doctors by disease/specialty
+ * - Added disease description text field
+ * - Added patient email field
+ * - Fixed edit/create logic
  */
 import React, { useEffect, useState } from 'react';
 import {
@@ -21,8 +25,9 @@ import {
   TextField,
   MenuItem,
   Typography,
+  Autocomplete,
 } from '@mui/material';
-import { Edit, Delete, Check, Close, CalendarToday, Add } from '@mui/icons-material';
+import { Edit, Delete, Check, Close, CalendarToday, Add, LocalHospital } from '@mui/icons-material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -66,6 +71,67 @@ const darkMenuProps = {
     },
   },
 };
+
+/* ─── Disease to Specialty mapping (Based on user-provided categories) ─── */
+const DISEASE_SPECIALTY_MAP = [
+  // General
+  { disease: "Fever / Cold / Infection (General)", specialty: "General Practitioner (GP)" },
+  { disease: "Family Health / Child & Adult (General)", specialty: "Family Medicine Doctor" },
+  // Heart
+  { disease: "Heart Attack / Blood Pressure / Heart Problems", specialty: "Cardiologist" },
+  { disease: "Heart Surgery", specialty: "Cardiac Surgeon" },
+  // Brain
+  { disease: "Brain / Nerves / Stroke / Headache", specialty: "Neurologist" },
+  { disease: "Brain or Spine Surgery", specialty: "Neurosurgeon" },
+  // Lungs
+  { disease: "Lung Diseases / Asthma / TB / Breathing", specialty: "Pulmonologist" },
+  // Digestive
+  { disease: "Stomach / Intestines / Digestion", specialty: "Gastroenterologist" },
+  { disease: "Liver Problems", specialty: "Hepatologist" },
+  // Bones
+  { disease: "Bones / Fractures / Orthopedics", specialty: "Orthopedic Doctor" },
+  { disease: "Joint Diseases / Arthritis / Rheumatism", specialty: "Rheumatologist" },
+  // Eyes
+  { disease: "Vision / Eye Problems / Eye Surgery", specialty: "Ophthalmologist" },
+  // ENT
+  { disease: "Ear / Nose / Throat Problems", specialty: "ENT Specialist (Otolaryngologist)" },
+  // Skin
+  { disease: "Skin / Hair / Nails Problems", specialty: "Dermatologist" },
+  // Hormones
+  { disease: "Diabetes / Thyroid / Hormones", specialty: "Endocrinologist" },
+  // Cancer
+  { disease: "Blood Diseases", specialty: "Hematologist" },
+  { disease: "Cancer Treatment / Oncology", specialty: "Oncologist" },
+  // Children
+  { disease: "Children's Health / Pediatrics", specialty: "Pediatrician" },
+  // Women
+  { disease: "Women's Reproductive Health / Gynecology", specialty: "Gynecologist" },
+  { disease: "Pregnancy & Childbirth / Obstetrics", specialty: "Obstetrician" },
+  // Surgery
+  { disease: "Appendix / Hernia / Basic Surgeries", specialty: "General Surgeon" },
+  { disease: "Cosmetic / Reconstructive Surgery", specialty: "Plastic Surgeon" },
+  { disease: "Urinary System / Kidneys", specialty: "Urologist" },
+  // Mental
+  { disease: "Mental Illness / Medication", specialty: "Psychiatrist" },
+  { disease: "Mental Health Therapy", specialty: "Psychologist" },
+  // Emergency
+  { disease: "Accidents / Urgent / ER Cases", specialty: "Emergency Doctor" },
+  { disease: "ICU / Critical Care", specialty: "Intensivist" },
+  // Teeth
+  { disease: "Teeth and Gums / Dentist", specialty: "Dentist" },
+  // Testing
+  { disease: "X-rays / Scans / Radiology", specialty: "Radiologist" },
+  { disease: "Lab tests / Diagnosis / Pathology", specialty: "Pathologist" },
+  // Other
+  { disease: "Anesthesia for Surgery", specialty: "Anesthesiologist" },
+  { disease: "Recovery / Movement / Exercise", specialty: "Physiotherapist" },
+  { disease: "COVID-19 / Dengue / Infectious Diseases", specialty: "Infectious Disease Specialist" },
+  { disease: "Kidneys (Specialized)", specialty: "Nephrologist" },
+  { disease: "Allergies", specialty: "Allergist" },
+  { disease: "Sports Injuries", specialty: "Sports Medicine Doctor" },
+  { disease: "Elderly Care / Geriatrics", specialty: "Geriatrician" },
+  { disease: "Other / Unspecified", specialty: "" },
+];
 
 /* ─── Status config ─── */
 const STATUS = {
@@ -126,7 +192,7 @@ const EmptyState = () => (
   </Box>
 );
 
-/* ─── Free slots ─── */
+/* ─── Free slots pill ─── */
 const SlotPill = ({ slot, selected, onClick }) => (
   <Box onClick={onClick} sx={{
     px: 1.5, py: 0.6, borderRadius: '8px', cursor: 'pointer',
@@ -141,23 +207,56 @@ const SlotPill = ({ slot, selected, onClick }) => (
   </Box>
 );
 
+const EMPTY_FORM = {
+  patient_name: '', patient_age: '', patient_disease: '',
+  disease_category: null, description: '', contact_number: '',
+  patient_email: '', address: '', doctor: '',
+  appointment_date: dayjs(), appointment_time: dayjs(),
+};
+
 export default function Appointments() {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState([]);
-  const [doctors, setDoctors] = useState([]);
+  const [allDoctors, setAllDoctors] = useState([]);
+  const [filteredDoctors, setFilteredDoctors] = useState([]);
   const [availability, setAvailability] = useState([]);
   const [freeSlots, setFreeSlots] = useState([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [filterStatus, setFilterStatus] = useState('All');
-  const [formData, setFormData] = useState({
-    patient_name: '', patient_age: '', patient_disease: '',
-    contact_number: '', address: '', doctor: '',
-    appointment_date: dayjs(), appointment_time: dayjs(),
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [conditionDialog, setConditionDialog] = useState({
+    open: false,
+    appointment: null,
+    remark: 'in_treatment',
+    current_condition: '',
+    next_checkup_date: '',
   });
 
   useEffect(() => { loadAppointments(); loadDoctors(); }, []);
 
+  // Filter doctors when disease category changes
+  useEffect(() => {
+    if (!formData.disease_category) {
+      setFilteredDoctors(allDoctors);
+      return;
+    }
+    const keyword = formData.disease_category.specialty.toLowerCase();
+    if (!keyword) {
+      setFilteredDoctors(allDoctors);
+      return;
+    }
+    const filtered = allDoctors.filter(d =>
+      d.specialization?.toLowerCase().includes(keyword)
+    );
+    setFilteredDoctors(filtered.length > 0 ? filtered : allDoctors);
+    // Reset doctor selection when category changes (only for new appointments)
+    if (!editing) {
+      setFormData(prev => ({ ...prev, doctor: '' }));
+    }
+  }, [formData.disease_category, allDoctors, editing]);
+
+  // Load availability when doctor/date changes
   useEffect(() => {
     const { doctor, appointment_date } = formData;
     if (!doctor || !appointment_date) { setAvailability([]); return; }
@@ -172,6 +271,7 @@ export default function Appointments() {
     load();
   }, [formData.doctor, formData.appointment_date]);
 
+  // Load free slots when doctor/date changes
   useEffect(() => {
     const load = async () => {
       if (!formData.doctor || !formData.appointment_date) { setFreeSlots([]); return; }
@@ -196,7 +296,9 @@ export default function Appointments() {
   const loadDoctors = async () => {
     try {
       const res = await doctorAPI.getAll();
-      setDoctors(res.data.results || res.data || []);
+      const docs = res.data.results || res.data || [];
+      setAllDoctors(docs);
+      setFilteredDoctors(docs);
     } catch { toast.error('Failed to load doctors'); }
   };
 
@@ -204,18 +306,23 @@ export default function Appointments() {
     if (appointment) {
       setEditing(appointment);
       setFormData({
-        patient_name: appointment.patient_name,
-        patient_age: appointment.patient_age,
-        patient_disease: appointment.patient_disease,
-        contact_number: appointment.contact_number,
-        address: appointment.address,
+        patient_name: appointment.patient_name || '',
+        patient_age: appointment.patient_age || '',
+        patient_disease: appointment.patient_disease || '',
+        disease_category: null,
+        description: appointment.description || '',
+        contact_number: appointment.contact_number || '',
+        patient_email: appointment.patient_email || '',
+        address: appointment.address || '',
         doctor: appointment.doctor,
         appointment_date: dayjs(appointment.appointment_date),
         appointment_time: dayjs(`${appointment.appointment_date}T${appointment.appointment_time}`),
       });
+      setFilteredDoctors(allDoctors);
     } else {
       setEditing(null);
-      setFormData({ patient_name: '', patient_age: '', patient_disease: '', contact_number: '', address: '', doctor: '', appointment_date: dayjs(), appointment_time: dayjs() });
+      setFormData({ ...EMPTY_FORM, appointment_date: dayjs(), appointment_time: dayjs() });
+      setFilteredDoctors(allDoctors);
     }
     setOpen(true);
   };
@@ -224,14 +331,37 @@ export default function Appointments() {
 
   const handleSubmit = async () => {
     try {
-      if (!availability.length) { toast.error('Doctor has no available slots for this day.'); return; }
+      if (!formData.doctor) { toast.error('Please select a doctor.'); return; }
+      if (!editing && !availability.length) {
+        toast.error('Doctor has no available slots for this day.'); return;
+      }
       const selectedTime = formData.appointment_time.format('HH:mm:ss');
-      if (freeSlots.length && !freeSlots.includes(selectedTime)) { toast.error('Selected time is already booked or unavailable.'); return; }
-      const data = { ...formData, appointment_date: formData.appointment_date.format('YYYY-MM-DD'), appointment_time: formData.appointment_time.format('HH:mm:ss') };
-      if (editing) { await appointmentAPI.update(editing.id, data); toast.success('Appointment updated'); }
-      else { await appointmentAPI.create(data); toast.success('Appointment created'); }
-      handleClose(); loadAppointments();
-    } catch (err) { toast.error(err.response?.data?.error || 'Failed to save appointment'); }
+      if (!editing && freeSlots.length && !freeSlots.includes(selectedTime)) {
+        toast.error('Selected time is already booked or unavailable.'); return;
+      }
+      const data = {
+        patient_name: formData.patient_name,
+        patient_age: formData.patient_age,
+        patient_disease: formData.patient_disease || formData.disease_category?.disease || 'Consultation',
+        contact_number: formData.contact_number,
+        patient_email: formData.patient_email,
+        address: formData.address,
+        doctor: formData.doctor,
+        appointment_date: formData.appointment_date.format('YYYY-MM-DD'),
+        appointment_time: formData.appointment_time.format('HH:mm:ss'),
+      };
+      if (editing) {
+        await appointmentAPI.update(editing.id, data);
+        toast.success('Appointment updated');
+      } else {
+        await appointmentAPI.create(data);
+        toast.success('Appointment created');
+      }
+      handleClose();
+      loadAppointments();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save appointment');
+    }
   };
 
   const handleAccept = async (id) => {
@@ -243,6 +373,42 @@ export default function Appointments() {
     if (!window.confirm('Delete this appointment?')) return;
     try { await appointmentAPI.delete(id); toast.success('Appointment deleted'); loadAppointments(); }
     catch { toast.error('Failed to delete appointment'); }
+  };
+
+  const openConditionDialog = (appt) => {
+    setConditionDialog({
+      open: true,
+      appointment: appt,
+      remark: 'in_treatment',
+      current_condition: '',
+      next_checkup_date: '',
+    });
+  };
+
+  const closeConditionDialog = () => {
+    setConditionDialog({
+      open: false,
+      appointment: null,
+      remark: 'in_treatment',
+      current_condition: '',
+      next_checkup_date: '',
+    });
+  };
+
+  const submitConditionUpdate = async () => {
+    if (!conditionDialog.appointment) return;
+    try {
+      await appointmentAPI.updateCondition(conditionDialog.appointment.id, {
+        remark: conditionDialog.remark,
+        current_condition: conditionDialog.current_condition,
+        next_checkup_date: conditionDialog.next_checkup_date || null,
+      });
+      toast.success('Patient condition updated');
+      closeConditionDialog();
+      loadAppointments();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to update condition');
+    }
   };
 
   const canEdit = (appt) =>
@@ -387,9 +553,16 @@ export default function Appointments() {
                           }}>
                             {appt.patient_name?.[0]?.toUpperCase()}
                           </Box>
-                          <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9' }}>
-                            {appt.patient_name}
-                          </Typography>
+                          <Box>
+                            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9' }}>
+                              {appt.patient_name}
+                            </Typography>
+                            {appt.contact_number && (
+                              <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.35)' }}>
+                                {appt.contact_number}
+                              </Typography>
+                            )}
+                          </Box>
                         </Box>
                       </TD>
                       <TD sx={{ color: 'rgba(255,255,255,0.55)' }}>{appt.patient_age}</TD>
@@ -429,6 +602,11 @@ export default function Appointments() {
                             </IconButton>
                           </>)}
                           {canEdit(appt) && (<>
+                            {appt.status === 'Confirmed' && (
+                              <IconButton size="small" onClick={() => openConditionDialog(appt)} sx={{ width: 30, height: 30, borderRadius: '8px', background: 'rgba(45,212,191,0.12)', color: '#2dd4bf', '&:hover': { background: 'rgba(45,212,191,0.24)' } }}>
+                                <LocalHospital sx={{ fontSize: 15 }} />
+                              </IconButton>
+                            )}
                             <IconButton size="small" onClick={() => handleOpen(appt)} sx={{ width: 30, height: 30, borderRadius: '8px', background: 'rgba(99,179,237,0.1)', color: '#63b3ed', '&:hover': { background: 'rgba(99,179,237,0.22)' } }}>
                               <Edit sx={{ fontSize: 15 }} />
                             </IconButton>
@@ -477,31 +655,84 @@ export default function Appointments() {
 
         <DialogContent sx={{ px: 3.5, py: 3 }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {/* Section: Patient */}
+
+            {/* Section: Patient Info */}
             <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: '#63b3ed', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
               👤 Patient Information
             </Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-              <TextField label="Patient Name" value={formData.patient_name} onChange={(e) => setFormData({ ...formData, patient_name: e.target.value })} fullWidth required sx={glassField} />
-              <TextField label="Age" type="number" value={formData.patient_age} onChange={(e) => setFormData({ ...formData, patient_age: e.target.value })} fullWidth required sx={glassField} />
+              <TextField label="Patient Name" value={formData.patient_name}
+                onChange={(e) => setFormData({ ...formData, patient_name: e.target.value })}
+                fullWidth required sx={glassField} />
+              <TextField label="Age" type="number" value={formData.patient_age}
+                onChange={(e) => setFormData({ ...formData, patient_age: e.target.value })}
+                fullWidth required sx={glassField} />
             </Box>
-            <TextField label="Disease / Problem" multiline rows={2} value={formData.patient_disease} onChange={(e) => setFormData({ ...formData, patient_disease: e.target.value })} fullWidth required sx={glassField} />
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-              <TextField label="Contact Number" value={formData.contact_number} onChange={(e) => setFormData({ ...formData, contact_number: e.target.value })} fullWidth required sx={glassField} />
-              <TextField label="Address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} fullWidth required sx={glassField} />
+              <TextField label="Contact Number" value={formData.contact_number}
+                onChange={(e) => setFormData({ ...formData, contact_number: e.target.value })}
+                fullWidth required sx={glassField} />
+              <TextField label="Patient Email (optional)" value={formData.patient_email}
+                onChange={(e) => setFormData({ ...formData, patient_email: e.target.value })}
+                fullWidth sx={glassField} />
             </Box>
+            <TextField label="Address" value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              fullWidth required sx={glassField} />
+
+            {/* Section: Disease & Doctor */}
+            <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: '#63b3ed', letterSpacing: '0.1em', textTransform: 'uppercase', mt: 0.5 }}>
+              🏥 Condition & Doctor
+            </Typography>
+
+            {/* Disease Category Selector */}
+            <Autocomplete
+              options={DISEASE_SPECIALTY_MAP}
+              getOptionLabel={(option) => option.disease}
+              value={formData.disease_category}
+              onChange={(_, newVal) => setFormData({ ...formData, disease_category: newVal, patient_disease: newVal?.disease || '' })}
+              renderInput={(params) => (
+                <TextField {...params} label="Disease / Condition Category" sx={glassField}
+                  inputProps={{ ...params.inputProps, style: { color: '#f1f5f9' } }} />
+              )}
+              PaperComponent={({ children }) => (
+                <Box sx={{
+                  background: '#0d1f3c', border: '1px solid rgba(99,179,237,0.2)',
+                  borderRadius: '12px', '& .MuiAutocomplete-option': {
+                    color: '#f1f5f9', '&:hover': { background: 'rgba(99,179,237,0.12)' },
+                  }
+                }}>{children}</Box>
+              )}
+            />
+
+            {/* Filtered Doctor Selector */}
+            <TextField select label="Select Doctor" value={formData.doctor}
+              onChange={(e) => setFormData({ ...formData, doctor: e.target.value })}
+              fullWidth required sx={glassField} SelectProps={{ MenuProps: darkMenuProps }}>
+              {filteredDoctors.length === 0 ? (
+                <MenuItem disabled>No doctors found for this specialty</MenuItem>
+              ) : filteredDoctors.map((d) => (
+                <MenuItem key={d.id} value={d.id}>
+                  🩺 Dr. {d.user?.full_name || d.name} — {d.specialization}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            {/* Description / Notes */}
+            <TextField
+              label="Description / Additional Notes"
+              multiline rows={3}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              fullWidth
+              sx={glassField}
+              placeholder="e.g. Patient has had recurring fever for 3 days, no known allergies..."
+            />
 
             {/* Section: Scheduling */}
             <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: '#63b3ed', letterSpacing: '0.1em', textTransform: 'uppercase', mt: 0.5 }}>
               📅 Scheduling
             </Typography>
-            <TextField select label="Select Doctor" value={formData.doctor} onChange={(e) => setFormData({ ...formData, doctor: e.target.value })} fullWidth required sx={glassField} SelectProps={{ MenuProps: darkMenuProps }}>
-              {doctors.map((d) => (
-                <MenuItem key={d.id} value={d.id}>
-                  🩺 {d.user?.full_name} — {d.specialization}
-                </MenuItem>
-              ))}
-            </TextField>
 
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
@@ -518,7 +749,7 @@ export default function Appointments() {
             {!!freeSlots.length && (
               <Box>
                 <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', mb: 1 }}>
-                  Available slots for this day:
+                  ✅ Available slots for this day:
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                   {freeSlots.map(slot => (
@@ -531,11 +762,11 @@ export default function Appointments() {
             )}
 
             {/* No availability warning */}
-            {formData.doctor && formData.appointment_date && !availability.length && (
+            {formData.doctor && formData.appointment_date && !availability.length && !editing && (
               <Box sx={{ px: 2, py: 1.5, borderRadius: '12px', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.22)', display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
                 <Box sx={{ fontSize: '1rem', mt: 0.1 }}>⚠️</Box>
                 <Typography sx={{ fontSize: '0.8rem', color: 'rgba(251,191,36,0.9)' }}>
-                  This doctor has no available slots for the selected day.
+                  This doctor has no available slots for the selected day. Please pick a different date.
                 </Typography>
               </Box>
             )}
@@ -555,6 +786,61 @@ export default function Appointments() {
               '&:hover': { opacity: 0.9 },
             }}>
             {editing ? 'Update Appointment' : 'Create Appointment'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={conditionDialog.open} onClose={closeConditionDialog} maxWidth="sm" fullWidth
+        PaperProps={{
+          sx: {
+            background: '#0d1f3c',
+            border: '1px solid rgba(99,179,237,0.18)',
+            borderRadius: '18px',
+            color: '#f1f5f9',
+          },
+        }}>
+        <DialogTitle>Update Current Condition</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <TextField
+            select
+            label="Remark"
+            value={conditionDialog.remark}
+            onChange={(e) => setConditionDialog((prev) => ({ ...prev, remark: e.target.value }))}
+            fullWidth
+            sx={glassField}
+            SelectProps={{ MenuProps: darkMenuProps }}
+          >
+            <MenuItem value="in_treatment">In Treatment</MenuItem>
+            <MenuItem value="cured">Cured</MenuItem>
+            <MenuItem value="not_come_clinic">Not Come for Clinic</MenuItem>
+          </TextField>
+          <TextField
+            label="Current Condition"
+            value={conditionDialog.current_condition}
+            onChange={(e) => setConditionDialog((prev) => ({ ...prev, current_condition: e.target.value }))}
+            fullWidth
+            multiline
+            rows={2}
+            sx={glassField}
+            placeholder="e.g. Fever reduced, patient improving..."
+          />
+          <TextField
+            label="Next Appointment Date (optional)"
+            type="date"
+            value={conditionDialog.next_checkup_date}
+            onChange={(e) => setConditionDialog((prev) => ({ ...prev, next_checkup_date: e.target.value }))}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+            sx={glassField}
+          />
+          <Typography sx={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
+            Note: If next checkup date is set in case history, condition changes are allowed on/after that date.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={closeConditionDialog} sx={{ color: 'rgba(255,255,255,0.6)' }}>Cancel</Button>
+          <Button onClick={submitConditionUpdate} sx={{ background: 'linear-gradient(135deg,#38bdf8,#818cf8)', color: '#fff' }}>
+            Save Update
           </Button>
         </DialogActions>
       </Dialog>

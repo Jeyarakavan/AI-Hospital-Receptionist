@@ -32,6 +32,7 @@ export default function Patients() {
     name: '',
     age: '',
     phone_number: '',
+    nic_number: '',
     email: '',
     primary_disease: '',
     patient_type: 'General',
@@ -126,6 +127,7 @@ export default function Patients() {
                 <Box>
                   <Typography variant="h6" sx={{ fontWeight: 600 }}>{patient.name}</Typography>
                   <Typography color="text.secondary">{patient.phone_number}</Typography>
+                  <Typography color="text.secondary">NIC: {patient.nic_number || 'N/A'}</Typography>
                   <Typography color="text.secondary">{patient.email || 'No email'}</Typography>
                   <Typography color="text.secondary">{patient.primary_disease || 'No disease noted'}</Typography>
                 </Box>
@@ -149,6 +151,7 @@ export default function Patients() {
             <TextField label="Full Name" value={formData.name} onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))} />
             <TextField label="Age" type="number" value={formData.age} onChange={(e) => setFormData((p) => ({ ...p, age: e.target.value }))} />
             <TextField label="Phone" value={formData.phone_number} onChange={(e) => setFormData((p) => ({ ...p, phone_number: e.target.value }))} />
+            <TextField label="NIC Number" value={formData.nic_number} onChange={(e) => setFormData((p) => ({ ...p, nic_number: e.target.value }))} />
             <TextField label="Email" value={formData.email} onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))} />
             <TextField label="Disease" value={formData.primary_disease} onChange={(e) => setFormData((p) => ({ ...p, primary_disease: e.target.value }))} />
             <TextField select label="Patient Type" value={formData.patient_type} onChange={(e) => setFormData((p) => ({ ...p, patient_type: e.target.value }))}>
@@ -172,6 +175,7 @@ export default function Patients() {
                   name: '',
                   age: '',
                   phone_number: '',
+                  nic_number: '',
                   email: '',
                   primary_disease: '',
                   patient_type: 'General',

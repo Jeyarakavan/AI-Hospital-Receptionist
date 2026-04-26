@@ -62,6 +62,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         max_length=20,
         validators=[RegexValidator(regex=r'^\+?1?\d{9,15}$', message="Phone number must be entered in the format: '+999999999'. Up to 15 digits allowed.")]
     )
+    nic_number = models.CharField(max_length=50, null=True, blank=True, db_index=True)
     address = models.TextField()
     profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
     about_yourself = models.TextField(blank=True)
@@ -175,6 +176,7 @@ class Patient(models.Model):
         max_length=20,
         validators=[RegexValidator(regex=r'^\+?1?\d{9,15}$', message="Phone number must be entered in the format: '+999999999'. Up to 15 digits allowed.")]
     )
+    nic_number = models.CharField(max_length=50, null=True, blank=True, db_index=True)
     email = models.EmailField(null=True, blank=True)
     primary_disease = models.CharField(max_length=255, blank=True)
     patient_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='General')
@@ -361,7 +363,9 @@ class Appointment(models.Model):
     patient_name = models.CharField(max_length=255)
     patient_age = models.IntegerField()
     patient_disease = models.TextField()
+    description = models.TextField(blank=True)
     contact_number = models.CharField(max_length=20)
+    patient_email = models.EmailField(null=True, blank=True)
     address = models.TextField()
     
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='appointments')
