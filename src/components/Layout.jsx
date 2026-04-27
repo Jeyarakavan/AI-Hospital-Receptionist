@@ -35,6 +35,8 @@ import {
   AccessTime,
   Chat,
   SmartToy,
+  NotificationsActive,
+  AssignmentInd,
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
 import { siteSettingsAPI } from '../services/api';
@@ -44,6 +46,7 @@ const drawerWidth = 260;
 const menuItems = [
   { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard', roles: ['Admin', 'Doctor', 'Receptionist', 'Staff'] },
   { text: 'Appointments', icon: <CalendarToday />, path: '/appointments', roles: ['Admin', 'Doctor', 'Receptionist'] },
+  { text: 'My Patients', icon: <AssignmentInd />, path: '/my-patients', roles: ['Doctor'] },
   { text: 'Patients', icon: <Badge />, path: '/patients', roles: ['Admin', 'Doctor', 'Receptionist', 'Staff'] },
   { text: 'Availability', icon: <AccessTime />, path: '/availability', roles: ['Admin', 'Doctor'] },
   { text: 'Chat', icon: <Chat />, path: '/chat', roles: ['Admin', 'Doctor', 'Receptionist', 'Staff'] },
@@ -51,6 +54,7 @@ const menuItems = [
   { text: 'Users', icon: <People />, path: '/users', roles: ['Admin'] },
   { text: 'News', icon: <NewReleases />, path: '/news', roles: ['Admin', 'Doctor', 'Receptionist', 'Staff'] },
   { text: 'Call Logs', icon: <Phone />, path: '/call-logs', roles: ['Admin', 'Receptionist'] },
+  { text: 'Notifications', icon: <NotificationsActive />, path: '/notifications', roles: ['Admin', 'Receptionist'] },
   { text: 'AI Terminal', icon: <SmartToy />, path: '/ai-terminal', roles: ['Admin', 'Receptionist'] },
   { text: 'Settings', icon: <Settings />, path: '/settings', roles: ['Admin'] },
 ];
@@ -86,6 +90,7 @@ export default function Layout({ children }) {
     navigate('/login');
     handleMenuClose();
   };
+
 
   const filteredMenuItems = menuItems.filter((item) =>
     item.roles.includes(user?.role)
@@ -217,9 +222,12 @@ export default function Layout({ children }) {
             <IconButton onClick={handleMenuOpen} sx={{ p: 0 }}>
               <Avatar
                 src={user?.profile_picture_url || user?.profile_picture || undefined}
+                alt={user?.full_name || 'User avatar'}
                 sx={{ bgcolor: 'secondary.main' }}
               >
-                {user?.full_name?.charAt(0) || 'U'}
+                {!user?.profile_picture_url && !user?.profile_picture ? (
+                  user?.full_name?.split(' ').map((part) => part?.[0] || '').join('').slice(0, 2).toUpperCase() || 'U'
+                ) : null}
               </Avatar>
             </IconButton>
             <Menu

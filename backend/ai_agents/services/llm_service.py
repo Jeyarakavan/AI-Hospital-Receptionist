@@ -92,7 +92,7 @@ class LLMService:
         """Fallback rule-based response if API fails/is missing."""
         last_msg = messages[-1]['content'].lower()
         if "book" in last_msg or "appointment" in last_msg:
-            return '{"intent": "book_appointment", "response_text": "I can help you book an appointment. Which doctor would you like to see?"}'
+            return '{"intent": "booking", "response_text": "I can help you book an appointment. What is the patient name?"}'
         return "I'm your AI Hospital Receptionist. How can I help you today?"
 
     def _call_anthropic(self, messages: List[Dict[str, str]], json_mode: bool) -> str:

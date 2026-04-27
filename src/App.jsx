@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useMemo } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { Box, CircularProgress, CssBaseline } from '@mui/material';
@@ -9,9 +9,11 @@ import { AuthProvider } from './context/AuthContext';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
-import Landing from './pages/Landing';
+import Homepage from './pages/Homepage';
 import ProtectedRoute from './routes/ProtectedRoute';
 import Layout from './components/Layout';
+
+const NotificationHistory = lazy(() => import('./pages/NotificationHistory'));
 
 const Appointments = lazy(() => import('./pages/Appointments'));
 const CallLogs = lazy(() => import('./pages/CallLogs'));
@@ -25,32 +27,9 @@ const Chat = lazy(() => import('./pages/Chat'));
 const News = lazy(() => import('./pages/News'));
 const Patients = lazy(() => import('./pages/Patients'));
 const PatientDetails = lazy(() => import('./pages/PatientDetails'));
+const MyPatients = lazy(() => import('./pages/MyPatients'));
 const AIChat = lazy(() => import('./pages/AIChat'));
 const ChangePassword = lazy(() => import('./pages/ChangePassword'));
-
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    background: {
-      default: '#f8fafc',
-      paper: '#ffffff',
-    },
-    primary: {
-      main: '#0d9488',
-    },
-    secondary: {
-      main: '#f97316',
-    },
-  },
-  shape: {
-    borderRadius: 12,
-  },
-  typography: {
-    h4: { fontWeight: 700 },
-    h5: { fontWeight: 700 },
-    button: { textTransform: 'none', fontWeight: 600 },
-  },
-});
 
 function AppLoader({ children }) {
   return (
@@ -67,6 +46,33 @@ function AppLoader({ children }) {
 }
 
 export default function App() {
+  const theme = useMemo(() => createTheme({
+    palette: {
+      mode: 'light',
+      background: {
+        default: '#f8fafc',
+        paper: '#ffffff',
+      },
+      primary: {
+        main: '#0b4dbb', // hospital blue
+      },
+      secondary: {
+        main: '#d61f2c', // hospital red
+      },
+      text: {
+        primary: '#0b1220',
+      }
+    },
+    shape: {
+      borderRadius: 12,
+    },
+    typography: {
+      h4: { fontWeight: 700 },
+      h5: { fontWeight: 700 },
+      button: { textTransform: 'none', fontWeight: 600 },
+    },
+  }), []);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -74,7 +80,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={<Homepage />} />
           <Route
             path="/dashboard"
             element={
@@ -196,6 +202,16 @@ export default function App() {
             }
           />
           <Route
+            path="/my-patients"
+            element={
+              <ProtectedRoute roles={['Doctor']}>
+                <Layout>
+                  <AppLoader><MyPatients /></AppLoader>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/patients/:id"
             element={
               <ProtectedRoute roles={['Admin', 'Doctor', 'Receptionist', 'Staff']}>
@@ -211,6 +227,16 @@ export default function App() {
               <ProtectedRoute roles={['Admin', 'Receptionist']}>
                 <Layout>
                   <AppLoader><AIChat /></AppLoader>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute roles={['Admin', 'Receptionist']}>
+                <Layout>
+                  <AppLoader><NotificationHistory /></AppLoader>
                 </Layout>
               </ProtectedRoute>
             }

@@ -57,7 +57,41 @@ export default function PatientDetails() {
       setPrescriptions([]);
       queryClient.invalidateQueries({ queryKey: ['patient-history', id] });
     },
-    onError: (e) => toast.error(e?.response?.data?.error || 'Failed to save encounter'),
+    onError: (e) => {
+      const d = e?.response?.data;
+      let msg = d?.error;
+
+      const formatValue = (val) => {
+        if (Array.isArray(val)) {
+          return val
+            .map((item, idx) => {
+              if (item && typeof item === 'object') {
+                const inner = Object.entries(item)
+                  .map(([k, v]) => `${k}: ${Array.isArray(v) ? v[0] : v}`)
+                  .join(', ');
+                return `item ${idx + 1} -> ${inner}`;
+              }
+              return String(item);
+            })
+            .join(' | ');
+        }
+        if (val && typeof val === 'object') {
+          return Object.entries(val)
+            .map(([k, v]) => `${k}: ${Array.isArray(v) ? v[0] : v}`)
+            .join(', ');
+        }
+        return String(val);
+      };
+
+      if (!msg && d && typeof d === 'object') {
+        const first = Object.entries(d)[0];
+        if (first) {
+          const [field, val] = first;
+          msg = `${field}: ${formatValue(val)}`;
+        }
+      }
+      toast.error(msg || 'Failed to save encounter');
+    },
   });
 
   const handleCreateEncounter = () => {
@@ -65,11 +99,26 @@ export default function PatientDetails() {
       toast.error('Create a patient case first.');
       return;
     }
+    if (!encounterForm.notes?.trim()) {
+      toast.error('Clinical Notes are required.');
+      return;
+    }
+    const normalizedPrescriptions = prescriptions
+      .map((p) => ({
+        medicine_name: (p.medicine_name ?? p.medicineName ?? p.medicine ?? '').trim(),
+        dosage: (p.dosage ?? '').trim(),
+        frequency: (p.frequency ?? '').trim(),
+        duration: (p.duration ?? '').trim(),
+        instructions: (p.instructions ?? '').trim(),
+      }))
+      .filter((p) => p.medicine_name);
+
     createEncounterMutation.mutate({
       patient_case: latestCase.id,
       ...encounterForm,
+      notes: encounterForm.notes.trim(),
       next_checkup_date: encounterForm.next_checkup_date || null,
-      prescriptions: prescriptions.filter((p) => p.medicine_name?.trim()),
+      prescriptions: normalizedPrescriptions,
     });
   };
 

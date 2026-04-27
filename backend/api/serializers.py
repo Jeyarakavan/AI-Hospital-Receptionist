@@ -69,7 +69,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'username', 'email', 'password', 'confirm_password',
-            'full_name', 'date_of_birth', 'phone_number', 'address',
+            'full_name', 'date_of_birth', 'phone_number', 'nic_number', 'address',
             'profile_picture', 'about_yourself', 'role',
             'doctor_id_card', 'specialization',
             'staff_id_card', 'receptionist_id_card'
@@ -81,6 +81,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             'full_name': {'required': True},
             'date_of_birth': {'required': True},
             'phone_number': {'required': True},
+            'nic_number': {'required': True},
             'address': {'required': True},
             'role': {'required': True},
             'profile_picture': {'required': False, 'allow_null': True},
@@ -110,6 +111,15 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs['password'] != attrs['confirm_password']:
             raise serializers.ValidationError({"password": "Password fields didn't match."})
+        nic_number = (attrs.get('nic_number') or '').strip().upper()
+        if not nic_number:
+            raise serializers.ValidationError({"nic_number": "NIC number is required."})
+        exists_qs = User.objects.filter(nic_number__iexact=nic_number)
+        if self.instance:
+            exists_qs = exists_qs.exclude(pk=self.instance.pk)
+        if exists_qs.exists():
+            raise serializers.ValidationError({"nic_number": "NIC number already exists."})
+        attrs['nic_number'] = nic_number
         return attrs
     
     def create(self, validated_data):
@@ -161,7 +171,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'username', 'email', 'full_name', 'date_of_birth',
-            'phone_number', 'address', 'profile_picture', 'profile_picture_url',
+            'phone_number', 'nic_number', 'address', 'profile_picture', 'profile_picture_url',
             'about_yourself', 'role', 'role_display', 'specialization',
             'status', 'status_display', 'id_card_url', 'has_changed_password',
             'date_joined', 'updated_at', 'password'
@@ -177,6 +187,17 @@ class UserSerializer(serializers.ModelSerializer):
             instance.set_password(password)
             instance.has_changed_password = True
         return super().update(instance, validated_data)
+
+    def validate_nic_number(self, value):
+        if value in [None, '']:
+            return value
+        normalized = value.strip().upper()
+        qs = User.objects.filter(nic_number__iexact=normalized)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError('NIC number already exists.')
+        return normalized
     
     def _absolute_uri(self, file_field):
         if not file_field:
@@ -238,6 +259,7 @@ class PatientSerializer(serializers.ModelSerializer):
             'name',
             'age',
             'phone_number',
+            'nic_number',
             'email',
             'primary_disease',
             'patient_type',
@@ -246,6 +268,17 @@ class PatientSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_nic_number(self, value):
+        if value in [None, '']:
+            return value
+        normalized = value.strip().upper()
+        qs = Patient.objects.filter(nic_number__iexact=normalized)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError('NIC number already exists.')
+        return normalized
 
 
 class PatientMedicalProfileSerializer(serializers.ModelSerializer):
@@ -331,10 +364,22 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
+class PrescriptionItemInputSerializer(serializers.Serializer):
+    """
+    Lightweight nested input serializer for encounter create/update.
+    Does not require `encounter` from client because it is set server-side.
+    """
+    medicine_name = serializers.CharField(required=True, allow_blank=False)
+    dosage = serializers.CharField(required=False, allow_blank=True, default='')
+    frequency = serializers.CharField(required=False, allow_blank=True, default='')
+    duration = serializers.CharField(required=False, allow_blank=True, default='')
+    instructions = serializers.CharField(required=False, allow_blank=True, default='')
+
+
 class PatientEncounterSerializer(serializers.ModelSerializer):
     """Serializer for doctor encounters"""
     doctor_name = serializers.CharField(source='doctor.user.full_name', read_only=True)
-    prescriptions = PrescriptionItemSerializer(many=True, required=False)
+    prescriptions = PrescriptionItemInputSerializer(many=True, required=False)
 
     class Meta:
         model = PatientEncounter
@@ -436,8 +481,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = [
-            'id', 'patient_name', 'patient_age', 'patient_disease',
-            'contact_number', 'address', 'doctor', 'doctor_name', 'doctor_specialization',
+            'id', 'patient_name', 'patient_age', 'patient_disease', 'description',
+            'contact_number', 'patient_email', 'address', 'doctor', 'doctor_name', 'doctor_specialization',
             'appointment_date', 'appointment_time', 'booking_time',
             'status', 'status_display', 'created_by', 'created_by_name', 'updated_at'
         ]
@@ -449,8 +494,8 @@ class AppointmentCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = [
-            'patient_name', 'patient_age', 'patient_disease',
-            'contact_number', 'address', 'doctor',
+            'patient_name', 'patient_age', 'patient_disease', 'description',
+            'contact_number', 'patient_email', 'address', 'doctor',
             'appointment_date', 'appointment_time', 'status'
         ]
 

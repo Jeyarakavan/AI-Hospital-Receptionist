@@ -175,11 +175,17 @@ class DatabaseAgent(BaseAgent):
     def save_appointment(self, params: Dict[str, Any]) -> Dict[str, Any]:
         try:
             from api.models import Appointment
+            from api.services import AppointmentService
+            from datetime import datetime
 
             name     = params.get("patient_name")
             phone    = params.get("contact_number")
             age      = params.get("patient_age", 0)
-            disease  = params.get("patient_disease", "Consultation")
+            # Support both field names from FormFlow (patient_disease) and legacy (patient_disease)
+            disease  = params.get("patient_disease") or params.get("patient_disease", "Consultation")
+            description = params.get("description", "")
+            address  = params.get("address", "Not provided")
+            patient_email = params.get("patient_email") or None
             doc_id   = params.get("doctor_id")
             apt_date = params.get("date")
             apt_time = params.get("time")
@@ -193,11 +199,25 @@ class DatabaseAgent(BaseAgent):
                 return {"success": False,
                         "error": f"Missing booking details: {', '.join(missing)}"}
 
+            doctor_obj = self._get_doctor_for_slot_validation(doc_id)
+            if not doctor_obj:
+                return {"success": False, "error": "Doctor not found"}
+            parsed_date = datetime.strptime(str(apt_date), "%Y-%m-%d").date()
+            available_slots = AppointmentService.get_available_slots(doctor_obj, parsed_date)
+            if str(apt_time) not in available_slots:
+                return {"success": False, "error": "Requested time is unavailable. Please choose another slot."}
+
             apt = Appointment.objects.create(
-                patient_name=name, patient_age=age,
-                patient_disease=disease, contact_number=phone,
-                doctor_id=doc_id, appointment_date=apt_date,
-                appointment_time=apt_time, status="Pending",
+                patient_name=name, patient_age=int(age) if age else 0,
+                patient_disease=disease or "Consultation",
+                description=description or "",
+                contact_number=phone,
+                patient_email=patient_email,
+                address=address,
+                doctor_id=doc_id,
+                appointment_date=apt_date,
+                appointment_time=apt_time,
+                status="Pending",
             )
 
             return {
@@ -208,11 +228,22 @@ class DatabaseAgent(BaseAgent):
                     "doctor":    apt.doctor.user.full_name,
                     "date":      apt_date,
                     "time":      apt_time,
+                    "contact":   phone,
+                    "patient_email": patient_email,
+                    "address":   address,
                 },
             }
         except Exception as e:
             logger.error(f"save_appointment error: {e}")
             return {"success": False, "error": str(e)}
+
+    def _get_doctor_for_slot_validation(self, doctor_id):
+        try:
+            from api.models import Doctor
+            return Doctor.objects.get(id=doctor_id)
+        except Exception:
+            return None
+
 
     # Alias used by AppointmentAgent
     def book_appointment(self, params: Dict[str, Any]) -> Dict[str, Any]:

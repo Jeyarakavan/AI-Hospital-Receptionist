@@ -8,7 +8,7 @@ from twilio.rest import Client as TwilioClient
 import sendgrid
 from sendgrid.helpers.mail import Mail, Email
 import logging
-from .models import Appointment, Doctor, DoctorAvailability
+from .models import Appointment, Doctor, DoctorAvailability, Patient, PatientCase
 from .mongodb_service import MongoDBService
 from django.db.models import Q
 
@@ -104,7 +104,9 @@ class NotificationService:
     def notify_appointment_confirmed(appointment):
         """Send doctor + patient notifications when appointment is confirmed"""
         doctor_email = appointment.doctor.user.email
-        patient_email = appointment.created_by.email if appointment.created_by and appointment.created_by.email else None
+        patient_email = appointment.patient_email or (
+            appointment.created_by.email if appointment.created_by and appointment.created_by.email else None
+        )
         appointment_details = (
             f"Patient: {appointment.patient_name}\n"
             f"Age: {appointment.patient_age}\n"
@@ -155,6 +157,8 @@ class NotificationService:
                 'appointment_id': str(appointment.id),
                 'doctor_email': doctor_email,
                 'patient_email': patient_email,
+                'purpose': 'appointment confirmation',
+                'receiver_email': patient_email or doctor_email,
             }
         )
     
@@ -198,6 +202,92 @@ class NotificationService:
 
 class AppointmentService:
     """Service for appointment management"""
+
+    @staticmethod
+    def ensure_patient_and_case_from_appointment(appointment):
+        """
+        Ensure a Patient exists (matched by email or phone), and ensure at least one active
+        PatientCase exists for this doctor-patient pair.
+        Returns (patient, patient_case) or (None, None) on failure.
+        """
+        try:
+            email = (appointment.patient_email or "").strip().lower()
+            phone = (appointment.contact_number or "").strip()
+
+            patient = None
+            if email:
+                patient = Patient.objects.filter(email__iexact=email).first()
+            if not patient and phone:
+                patient = Patient.objects.filter(phone_number=phone).first()
+
+            if patient:
+                # Keep patient profile fresh
+                dirty = False
+                if appointment.patient_name and patient.name != appointment.patient_name:
+                    patient.name = appointment.patient_name
+                    dirty = True
+                if appointment.patient_age and patient.age != appointment.patient_age:
+                    patient.age = appointment.patient_age
+                    dirty = True
+                if phone and patient.phone_number != phone:
+                    patient.phone_number = phone
+                    dirty = True
+                if email and (patient.email or "").lower() != email:
+                    patient.email = email
+                    dirty = True
+                if appointment.address and patient.address != appointment.address:
+                    patient.address = appointment.address
+                    dirty = True
+                if appointment.patient_disease and patient.primary_disease != appointment.patient_disease:
+                    patient.primary_disease = appointment.patient_disease
+                    dirty = True
+                if dirty:
+                    patient.save()
+            else:
+                patient = Patient.objects.create(
+                    name=appointment.patient_name,
+                    age=appointment.patient_age or 0,
+                    phone_number=phone,
+                    email=email or None,
+                    primary_disease=appointment.patient_disease or "",
+                    patient_type="General",
+                    address=appointment.address or "",
+                )
+
+            # Ensure an active case exists for this patient & doctor
+            existing_case = PatientCase.objects.filter(
+                patient=patient,
+                assigned_doctor=appointment.doctor,
+                is_active=True,
+            ).exclude(status="Closed").order_by("-created_at").first()
+
+            if existing_case:
+                # Optionally refresh diagnosis/condition
+                updated = False
+                if appointment.patient_disease and existing_case.diagnosis != appointment.patient_disease:
+                    existing_case.diagnosis = appointment.patient_disease
+                    updated = True
+                if getattr(appointment, "description", "") and not existing_case.current_condition:
+                    existing_case.current_condition = appointment.description
+                    updated = True
+                if updated:
+                    existing_case.save(update_fields=["diagnosis", "current_condition", "updated_at"])
+                return patient, existing_case
+
+            new_case = PatientCase.objects.create(
+                patient=patient,
+                assigned_doctor=appointment.doctor,
+                diagnosis=appointment.patient_disease or "Consultation",
+                current_condition=getattr(appointment, "description", "") or "",
+                status="Open",
+                is_active=True,
+                created_by=appointment.doctor.user,
+                updated_by=appointment.doctor.user,
+            )
+            return patient, new_case
+        except Exception as e:
+            logger.error(f"ensure_patient_and_case_from_appointment error: {e}")
+            return None, None
     
     @staticmethod
     def can_edit_appointment(appointment):
@@ -304,6 +394,9 @@ class AppointmentService:
         """Doctor accepts appointment"""
         appointment.status = 'Confirmed'
         appointment.save()
+
+        # Ensure patient profile + active medical case exists for doctor workflow
+        AppointmentService.ensure_patient_and_case_from_appointment(appointment)
         
         # Send notification
         NotificationService.notify_appointment_confirmed(appointment)

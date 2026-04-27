@@ -24,11 +24,18 @@ import api from '../services/api';
 
 export default function AIChat() {
   const { user } = useAuth();
-  const [messages, setMessages] = useState([
-    { role: 'ai', content: "Hello! I'm your AI Hospital Receptionist. You can test my booking and triage logic here without needing a phone call. How can I help you today?" }
-  ]);
+  const [callId] = useState(() => {
+    const key = `ai_chat_call_id_${user?.id || 'guest'}`;
+    const existing = localStorage.getItem(key);
+    if (existing) return existing;
+    const created = `browser_session_${user?.id || 'guest'}_${Date.now()}`;
+    localStorage.setItem(key, created);
+    return created;
+  });
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [bootstrapped, setBootstrapped] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -37,10 +44,41 @@ export default function AIChat() {
     }
   }, [messages]);
 
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const res = await api.get('ai/chat-history/', { params: { call_id: callId, limit: 300 } });
+        const history = res?.data?.history || [];
+        const mapped = history
+          .map((row) => {
+            const role = row?.metadata?.role;
+            if (role === 'user') return { role: 'user', content: row.input_data || '' };
+            if (role === 'ai') return { role: 'ai', content: row.output_data || '' };
+            return null;
+          })
+          .filter((m) => m && m.content);
+        if (mapped.length > 0) {
+          setMessages(mapped);
+        } else {
+          setMessages([
+            { role: 'ai', content: "Hello! I'm your AI Hospital Receptionist. You can test my booking and triage logic here without needing a phone call. How can I help you today?" }
+          ]);
+        }
+      } catch {
+        setMessages([
+          { role: 'ai', content: "Hello! I'm your AI Hospital Receptionist. You can test my booking and triage logic here without needing a phone call. How can I help you today?" }
+        ]);
+      } finally {
+        setBootstrapped(true);
+      }
+    };
+    loadHistory();
+  }, [callId]);
+
   const handleSend = async () => {
     if (!input.trim() || loading) return;
 
-    const userMsg = input;
+    const userMsg = input.trim();
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setLoading(true);
@@ -49,12 +87,16 @@ export default function AIChat() {
       // Use the shared 'api' instance which has the VITE_API_BASE_URL and JWT token
       const res = await api.post('ai/call/', {
         text: userMsg,
-        call_id: 'browser_session_' + (user?.id || 'guest')
+        call_id: callId,
       });
 
       setMessages(prev => [...prev, { role: 'ai', content: res.data.response_text }]);
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'ai', content: "I'm sorry, I'm experiencing some connectivity issues with my core logic. Please ensure the backend is running and you are logged in." }]);
+      const errorText =
+        err?.response?.data?.response_text ||
+        err?.response?.data?.error ||
+        "I'm sorry, I'm experiencing some connectivity issues with my core logic. Please ensure the backend is running and you are logged in.";
+      setMessages(prev => [...prev, { role: 'ai', content: errorText }]);
     } finally {
       setLoading(false);
     }
@@ -122,6 +164,9 @@ export default function AIChat() {
         ))}
         {loading && (
           <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.3)', ml: 5 }}>AI is thinking...</Typography>
+        )}
+        {!bootstrapped && (
+          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.3)', ml: 5 }}>Loading chat history...</Typography>
         )}
       </Paper>
 
