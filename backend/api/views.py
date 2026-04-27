@@ -1228,6 +1228,16 @@ def notification_history(request):
     return Response(result[:300])
 
 
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated, IsAdmin])
+def mongo_status(request):
+    """
+    Admin-only endpoint to confirm MongoDB connectivity + configured DB name.
+    Useful when call logs / notifications appear empty.
+    """
+    return Response(MongoDBService.health())
+
+
 
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])

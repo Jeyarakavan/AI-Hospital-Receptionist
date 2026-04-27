@@ -3,7 +3,7 @@ MongoDB Service for storing call logs and AI interactions
 """
 from pymongo import MongoClient
 from django.conf import settings
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import certifi
 
@@ -15,12 +15,26 @@ class MongoDBService:
     _client = None
     _db = None
     _broken = False
+    _broken_until = None
+    _last_error = None
     
     @classmethod
     def get_client(cls):
         """Get MongoDB client instance"""
-        if cls._broken:
+        # Backoff instead of permanently disabling.
+        if cls._broken_until and datetime.utcnow() < cls._broken_until:
             return None
+        if cls._broken_until and datetime.utcnow() >= cls._broken_until:
+            cls._broken_until = None
+            cls._broken = False
+            cls._client = None
+            cls._db = None
+
+        if not getattr(settings, "MONGODB_URI", None):
+            cls._last_error = "MONGODB_URI is empty"
+            logger.warning("MongoDB URI not configured (MONGODB_URI). Mongo persistence disabled.")
+            return None
+
         if cls._client is None:
             try:
                 # Add short timeout to prevent blocking the whole AI turn if MongoDB is dead
@@ -34,10 +48,14 @@ class MongoDBService:
                 # Test connection (optional but fast with small timeout)
                 cls._client.admin.command('ping')
                 logger.info("MongoDB connection established")
+                cls._last_error = None
             except Exception as e:
-                logger.error(f"MongoDB connection failed, disabling persistence: {str(e)}")
+                cls._last_error = str(e)
+                logger.error(f"MongoDB connection failed, backing off: {cls._last_error}")
                 cls._broken = True
+                cls._broken_until = datetime.utcnow() + timedelta(seconds=45)
                 cls._client = None
+                cls._db = None
         return cls._client
     
     @classmethod
@@ -49,6 +67,37 @@ class MongoDBService:
                 return None
             cls._db = client[settings.MONGODB_DB_NAME]
         return cls._db
+
+    @classmethod
+    def health(cls):
+        """
+        Lightweight health check for diagnostics.
+        Does not raise; safe to call from an API endpoint.
+        """
+        try:
+            client = cls.get_client()
+            if client is None:
+                return {
+                    "ok": False,
+                    "db_name": getattr(settings, "MONGODB_DB_NAME", None),
+                    "broken_until": cls._broken_until.isoformat() if cls._broken_until else None,
+                    "last_error": cls._last_error,
+                }
+            client.admin.command("ping")
+            return {
+                "ok": True,
+                "db_name": getattr(settings, "MONGODB_DB_NAME", None),
+                "broken_until": None,
+                "last_error": None,
+            }
+        except Exception as e:
+            cls._last_error = str(e)
+            return {
+                "ok": False,
+                "db_name": getattr(settings, "MONGODB_DB_NAME", None),
+                "broken_until": cls._broken_until.isoformat() if cls._broken_until else None,
+                "last_error": cls._last_error,
+            }
     
     @classmethod
     def save_call_log(cls, caller_number, intent, response, duration=None, status='completed'):
